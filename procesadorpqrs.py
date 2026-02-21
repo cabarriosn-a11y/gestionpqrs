@@ -17,7 +17,7 @@ REGIONAL = "Regional Guajira"
 ARCHIVO_DATOS = "registro_pqrs.csv"
 
 # Línea para Tesseract (Comentar si vas a publicar en Streamlit Cloud)
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.#pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def guardar_datos(datos):
     df_nuevo = pd.DataFrame([datos])
@@ -111,4 +111,5 @@ else:
             doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
             doc.render({**ctx, "lista_aprendices": df.to_dict(orient='records')})
             b = io.BytesIO(); doc.save(b)
+
             st.download_button("Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
