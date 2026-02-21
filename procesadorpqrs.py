@@ -7,24 +7,48 @@ import io
 import datetime
 import pandas as pd
 import os
+import google.generativeai as genai
 
 # ==========================================
-# ⚙️ CONFIGURACIÓN V1.1.1 - SENA GUAJIRA
+# ⚙️ CONFIGURACIÓN FINAL - SENA GUAJIRA
 # ==========================================
-VERSION = "1.1.1"
+VERSION = "1.2.2"
 CENTRO = "Centro Industrial y de Energías Alternativas"
 REGIONAL = "Regional Guajira"
 ARCHIVO_DATOS = "registro_pqrs.csv"
 
-# COMENTAR PARA STREAMLIT CLOUD
+# Configuración de Gemini desde Secrets de Streamlit
+if "GEMINI_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+else:
+    st.sidebar.error("❌ Falta GEMINI_API_KEY en Secrets.")
+
+# COMENTAR ESTA LÍNEA PARA PRODUCCIÓN EN LA NUBE
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+# --- FUNCIONES DE INTELIGENCIA ---
+
+def redactar_con_ia(prompt_usuario):
+    """Genera una respuesta formal usando Google Gemini"""
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        contexto = (
+            "Eres un funcionario del SENA Colombia. Redacta una respuesta formal, "
+            "cordial y técnica para una PQRS. Usa lenguaje institucional. "
+            "La situación es: "
+        )
+        response = model.generate_content(contexto + prompt_usuario)
+        return response.text
+    except Exception as e:
+        return f"Error de conexión con la IA: {e}"
 
 @st.cache_data(show_spinner=False)
 def extraer_datos(_img):
+    """OCR inteligente para Portal PQRS y Oficina Virtual"""
     texto = pytesseract.image_to_string(_img, lang='eng')
     d = {"nombre": "", "cedula": "", "ficha": "", "programa": "", "radicado": "", "nis": "", "correo": "", "telefono": ""}
     
-    # OCR - Datos Básicos
+    # Radicado, NIS, Correo, Cédula
     m_rad = re.search(r'(\d-\d{4}-\d+)', texto); d["radicado"] = m_rad.group(1) if m_rad else ""
     m_nis = re.search(r'(\d{4}-\d{2}-\d+)', texto); d["nis"] = m_nis.group(1) if m_nis else ""
     m_cor = re.search(r'([a-zA-Z0-9._%+-]+\s?[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', texto)
@@ -32,126 +56,118 @@ def extraer_datos(_img):
     m_ced = re.search(r'(?:Identificaci|Documento|No\.\s*de)[^\d]*(\d{7,10})', texto, re.IGNORECASE)
     if m_ced: d["cedula"] = m_ced.group(1)
 
-    # Lógica de Nombre
+    # Lógica de Nombre Multi-Formato
     lineas = [l.strip() for l in texto.split('\n') if len(l.strip()) > 2]
-    n_ov = ""; a_ov = ""
+    n_ov, a_ov = "", ""
     for i, l in enumerate(lineas):
         if "Nombres" == l.strip() and i+1 < len(lineas): n_ov = lineas[i+1]
         if "Apellidos" == l.strip() and i+1 < len(lineas): a_ov = lineas[i+1]
         if "Nombre Persona" in l and i+1 < len(lineas): d["nombre"] = lineas[i+1]
     if n_ov and a_ov: d["nombre"] = f"{n_ov} {a_ov}"
-
-    # Limpieza
-    for b in ["SAN ANTONIO", "BARRIO", "MUNICIPIO", "MIRANDA", "CAUCA", "CORREO", "TELEFONO"]:
-        d["nombre"] = re.sub(rf'\b{b}\b', '', d["nombre"], flags=re.IGNORECASE).strip()
-    d["nombre"] = re.sub(r'[^a-zA-Z\s]', '', d["nombre"]).strip()
     
+    # Limpieza de ruidos (Barrio, Cargo, etc.)
+    d["nombre"] = re.sub(r'SAN\s*ANTONIO|BARRIO|MUNICIPIO|MIRANDA|CAUCA|CORREO|TELEFONO', '', d["nombre"], flags=re.IGNORECASE).strip()
+    d["nombre"] = re.sub(r'[^a-zA-Z\s]', '', d["nombre"]).strip()
+
+    # Ficha
     m_fic = re.search(r'(?:Ficha|Curso)\s*\D*(\d{7,10})', texto, re.IGNORECASE)
     d["ficha"] = m_fic.group(1) if m_fic else ""
     
     return d
 
-# --- INTERFAZ ---
+# --- INTERFAZ STREAMLIT ---
 st.set_page_config(page_title=f"SENA Guajira v{VERSION}", layout="wide")
 
 with st.sidebar:
     if os.path.exists("logo.png"): st.image("logo.png", width=120)
     st.title("SENA - Riohacha")
-    # TRES OPCIONES CLARAS
     menu = st.radio("MENÚ PRINCIPAL", [
-        "1. Procesar Retiros (Base de Datos)", 
-        "2. Redactor Libre IA (Otros Temas)", 
-        "3. Acta Mensual de Retiros"
+        "1. Retiros Voluntarios (Base de Datos)", 
+        "2. Redactor Inteligente IA (Temas Varios)", 
+        "3. Acta de Cierre Mensual"
     ])
     st.markdown("---")
-    st.caption(f"v{VERSION} | {REGIONAL}")
+    st.caption(f"v{VERSION} | {REGIONAL}\n{CENTRO}")
 
 hoy = datetime.datetime.now()
 ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"][hoy.month-1], "ANHO": hoy.year, "ACTA": hoy.month}
 
 # ==========================================
-# OPCIÓN 1: RETIROS (CON GUARDADO)
+# OPCIÓN 1: RETIROS
 # ==========================================
-if menu == "1. Procesar Retiros (Base de Datos)":
-    st.header("📄 Gestión de Retiros Voluntarios")
-    st.info("Nota: Los datos procesados aquí se guardarán para el Acta Mensual.")
+if menu == "1. Retiros Voluntarios (Base de Datos)":
+    st.header("📄 Procesamiento de Retiros Voluntarios")
+    archivo = st.file_uploader("Subir formulario de retiro", type=["tif", "png", "jpg"])
     
-    archivo = st.file_uploader("Sube el formulario de retiro", type=["tif", "png", "jpg"])
     if archivo:
         img = Image.open(archivo); d_ocr = extraer_datos(img)
         col1, col2 = st.columns(2)
         with col1:
-            nom = st.text_input("Nombre", value=d_ocr["nombre"])
+            nom = st.text_input("Nombre Aprendiz", value=d_ocr["nombre"])
             ced = st.text_input("Cédula", value=d_ocr["cedula"])
             fic = st.text_input("Ficha", value=d_ocr["ficha"])
         with col2:
             rad = st.text_input("Radicado", value=d_ocr["radicado"])
             prog = st.text_input("Programa")
-            novedad = "Retiro Voluntario"
+            nov = "Retiro Voluntario"
 
         c1, c2 = st.columns(2)
         if c1.button("💾 GUARDAR EN LISTA"):
-            pd.DataFrame([{"nombre": nom.upper(), "cedula": ced, "ficha": fic, "programa": prog.upper(), "radicado": rad, "novedad": novedad}]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
-            st.success("Guardado en la base de datos de retiros.")
+            pd.DataFrame([{"nombre": nom.upper(), "cedula": ced, "ficha": fic, "programa": prog.upper(), "radicado": rad, "novedad": nov}]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
+            st.success("✅ Guardado para el acta mensual.")
         
-        if c2.button("🖨️ GENERAR CARTA"):
+        if c2.button("🖨️ GENERAR CARTA DE RETIRO"):
             doc = DocxTemplate("Plantilla_PQRS.docx")
-            doc.render({**ctx, "NOMBRE": nom, "CEDULA": ced, "FICHA": fic, "PROGRAMA": prog, "RADICADO": rad, "CUERPO": "Se procede a realizar el trámite de retiro voluntario de acuerdo a su solicitud."})
-            b = io.BytesIO(); doc.save(b); st.download_button("Descargar Carta", b.getvalue(), f"Retiro_{ced}.docx")
+            doc.render({**ctx, "NOMBRE": nom, "CEDULA": ced, "FICHA": fic, "PROGRAMA": prog, "RADICADO": rad, "CUERPO": "Se tramita retiro voluntario según solicitud oficial."})
+            b = io.BytesIO(); doc.save(b); st.download_button("📥 Descargar Carta", b.getvalue(), f"Retiro_{ced}.docx")
 
 # ==========================================
-# OPCIÓN 2: REDACTOR LIBRE (SIN GUARDADO)
+# OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
-elif menu == "2. Redactor Libre IA (Otros Temas)":
-    st.header("🤖 Redactor de Respuestas IA (Cualquier Tema)")
-    st.warning("Esta opción NO guarda datos en el acta mensual. Es solo para redactar y descargar.")
+elif menu == "2. Redactor Inteligente IA (Temas Varios)":
+    st.header("🤖 Asistente de Redacción Gemini")
+    st.warning("Esta sección usa 'Plantilla_Generica_IA.docx' y no guarda en la base de datos.")
     
-    # También permite OCR para no escribir el nombre
-    archivo_ia = st.file_uploader("Sube el documento (opcional para extraer nombre)", type=["tif", "png", "jpg"], key="ia_ocr")
-    d_ia = extraer_datos(Image.open(archivo_ia)) if archivo_ia else {"nombre": "", "cedula": "", "ficha": "", "programa": "", "radicado": ""}
+    archivo_ia = st.file_uploader("Opcional: Subir imagen para datos", type=["tif", "png", "jpg"])
+    d_ia = extraer_datos(Image.open(archivo_ia)) if archivo_ia else {"nombre": "", "cedula": "", "radicado": "", "programa": ""}
 
     col_ia1, col_ia2 = st.columns(2)
     with col_ia1:
-        nom_ia = st.text_input("Nombre del Aprendiz", value=d_ia["nombre"])
+        nom_ia = st.text_input("Nombre", value=d_ia["nombre"])
         ced_ia = st.text_input("Identificación", value=d_ia["cedula"])
-        rad_ia = st.text_input("Número de Radicado", value=d_ia["radicado"])
     with col_ia2:
-        tema = st.selectbox("Tema de la respuesta", ["Certificación", "Traslado de Centro", "Inconformidad Instructor", "Otro Tema"])
+        rad_ia = st.text_input("Radicado", value=d_ia["radicado"])
         prog_ia = st.text_input("Programa", value=d_ia["programa"])
 
-    st.markdown("### ✍️ Redacción de la Respuesta")
-    if tema == "Certificación":
-        problema = st.text_area("Detalle del problema", "El aprendiz no visualiza su certificado de etapa productiva.")
-        solucion = st.text_input("Solución brindada", "Se enviará el reporte a coordinación académica para firma.")
-        cuerpo_final = f"En atención a su requerimiento sobre la certificación del programa {prog_ia}, le informamos que {problema}. Por tal motivo, {solucion}. Estaremos informando el avance a su correo."
-    else:
-        cuerpo_final = st.text_area("Redacta aquí la respuesta oficial:", "Escribe aquí los párrafos de la respuesta...")
+    st.markdown("### 📝 Instrucción de Redacción")
+    prompt = st.text_area("Explica la situación (Ej: Niega certificación por falta de horas)", "Informa que el certificado está en proceso de firma y llegará en 3 días.")
+    
+    if st.button("✨ GENERAR TEXTO CON IA"):
+        with st.spinner("Gemini redactando..."):
+            st.session_state['cuerpo_ia'] = redactar_con_ia(f"Aprendiz: {nom_ia}. Programa: {prog_ia}. Situación: {prompt}")
 
-    st.info(f"**Cuerpo redactado:**\n\n{cuerpo_final}")
-
-    if st.button("🖨️ GENERAR DOCUMENTO WORD (SIN GUARDAR)"):
-        try:
-            doc = DocxTemplate("Plantilla_PQRS.docx")
+    if 'cuerpo_ia' in st.session_state:
+        cuerpo_final = st.text_area("Edita la redacción:", value=st.session_state['cuerpo_ia'], height=250)
+        if st.button("🖨️ GENERAR WORD GENÉRICO"):
+            doc = DocxTemplate("Plantilla_Generica_IA.docx")
             doc.render({**ctx, "NOMBRE": nom_ia.upper(), "CEDULA": ced_ia, "RADICADO": rad_ia, "PROGRAMA": prog_ia.upper(), "CUERPO": cuerpo_final})
             b = io.BytesIO(); doc.save(b); st.download_button("📥 Descargar Documento IA", b.getvalue(), f"Respuesta_IA_{ced_ia}.docx")
-        except Exception as e: st.error(f"Error: {e}")
 
 # ==========================================
 # OPCIÓN 3: ACTA MENSUAL
 # ==========================================
 else:
-    st.header(f"📊 Acta Mensual de Retiros - {ctx['MES']}")
+    st.header(f"📊 Acta de Retiros - {ctx['MES']}")
     if os.path.exists(ARCHIVO_DATOS):
-        df = pd.read_csv(ARCHIVO_DATOS)
-        st.dataframe(df, use_container_width=True)
+        df = pd.read_csv(ARCHIVO_DATOS); st.table(df)
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("📝 GENERAR ACTA MENSUAL"):
+            if st.button("📝 GENERAR ACTA"):
                 doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
                 doc.render({**ctx, "lista_aprendices": df.to_dict(orient='records')})
                 b = io.BytesIO(); doc.save(b); st.download_button("Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
         with c2:
-            if st.button("🚨 VACIAR LISTA (Resetear Mes)"):
+            if st.button("🚨 REINICIAR MES (Borrar todo)"):
                 os.remove(ARCHIVO_DATOS); st.rerun()
     else:
-        st.warning("No hay retiros registrados este mes.")
+        st.warning("No hay registros de retiros.")
