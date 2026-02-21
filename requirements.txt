@@ -3,4 +3,4 @@ pytesseract
 Pillow
 docxtpl
 pandas
-google-generativeai==0.3.1
+google-generativeai>=0.8.0
