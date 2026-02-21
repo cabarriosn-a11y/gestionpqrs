@@ -2,4 +2,5 @@ streamlit
 pytesseract
 Pillow
 docxtpl
+google-generativeai
 pandas
