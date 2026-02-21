@@ -29,15 +29,16 @@ else:
 # --- FUNCIONES DE INTELIGENCIA ---
 
 def redactar_con_ia(prompt_usuario):
-    """Genera una respuesta formal usando el modelo más estable"""
+    """Genera una respuesta formal usando el modelo más compatible de 2026"""
     try:
-        # Intentamos con el nombre más estándar
-        model = genai.GenerativeModel('gemini-pro') 
+        # Usamos el modelo 1.5-flash que es el estándar actual
+        model = genai.GenerativeModel('gemini-1.5-flash') 
         contexto = "Eres un experto administrativo del SENA. Redacta de forma formal: "
         response = model.generate_content(contexto + prompt_usuario)
         return response.text
     except Exception as e:
-        return f"Error técnico: {e}. Revisa tu API Key en los Secrets de Streamlit."
+        # Si hay un error de 'not found', es por la versión de la API
+        return f"Error técnico: {e}. Intenta reiniciar la app en Streamlit Cloud."
 
 @st.cache_data(show_spinner=False)
 def extraer_datos(_img):
@@ -168,5 +169,6 @@ else:
                 os.remove(ARCHIVO_DATOS); st.rerun()
     else:
         st.warning("No hay registros de retiros.")
+
 
 
