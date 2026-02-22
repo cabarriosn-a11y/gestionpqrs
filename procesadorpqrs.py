@@ -2,7 +2,7 @@ import streamlit as st
 import pytesseract
 from PIL import Image
 import re
-from docxtpl import DocxTemplate
+from PIL import Image
 import io
 import datetime
 import pandas as pd
@@ -46,35 +46,39 @@ def redactar_con_ia(prompt_usuario):
         return f"Error con Gemini 2.5: {e}. Intenta usar 'gemini-2.0-flash' si persiste."
 
 #BORRE
-def extraer_datos_multiformato(img):
-    # Esta función es el cerebro que identifica si es PQRS o Oficina Virtual
+def extraer_datos_retiros(img):
+    # Usamos 'spa' porque tus documentos son del SENA en español
     texto = pytesseract.image_to_string(img, lang='spa')
-    datos = {"nombre": "", "cedula": "", "ficha": "", "radicado": "", "nis": "", "email": ""}
+    
+    # Creamos un diccionario vacío para los datos
+    d = {"nombre": "", "cedula": "", "ficha": "", "radicado": "", "nis": "", "email": "", "tel": ""}
 
-    # Buscador de Radicado y NIS (Común en ambos formatos)
-    rad_match = re.search(r"(?:No\.\s*)?Radicado\s*\n?([\d-]+)", texto, re.IGNORECASE)
-    if rad_match: datos["radicado"] = rad_match.group(1).strip()
-
-    nis_match = re.search(r"N\.?I\.?S\s*\n?([\d-]+)", texto, re.IGNORECASE)
-    if nis_match: datos["nis"] = nis_match.group(1).strip()
-
-    # Buscador de Nombre (Detecta etiquetas de Oficina Virtual y Portal PQRS)
-    nombres = re.search(r"Nombres\s*\n+(.*)", texto, re.IGNORECASE)
-    apellidos = re.search(r"Apellidos\s*\n+(.*)", texto, re.IGNORECASE)
-    if nombres and apellidos:
-        datos["nombre"] = f"{nombres.group(1).strip()} {apellidos.group(1).strip()}".upper()
+    # --- LÓGICA DE BÚSQUEDA (REGEX) ---
+    # Nombre: Busca "Nombre Persona" (PQRS) o "Nombres"+"Apellidos" (Oficina Virtual)
+    if "Nombre Persona" in texto:
+        res = re.search(r"Nombre Persona\s*\n+(.*)", texto)
+        if res: d["nombre"] = res.group(1).strip().upper()
     else:
-        nom_persona = re.search(r"Nombre Persona\s*\n+(.*)", texto, re.IGNORECASE)
-        if nom_persona: datos["nombre"] = nom_persona.group(1).strip().upper()
+        n = re.search(r"Nombres\s*\n+(.*)", texto)
+        a = re.search(r"Apellidos\s*\n+(.*)", texto)
+        if n and a: d["nombre"] = f"{n.group(1).strip()} {a.group(1).strip()}".upper()
 
-    # Buscador de Cédula y Ficha
-    ced_match = re.search(r"(?:No\.\s*de\s*)?Identificación\s*\n?(\d+)", texto, re.IGNORECASE)
-    if ced_match: datos["cedula"] = ced_match.group(1).strip()
+    # Radicado y NIS (Busca números con guiones)
+    rad = re.search(r"Radicado\s*\n?([\d-]+)", texto)
+    if rad: d["radicado"] = rad.group(1).strip()
+    
+    nis = re.search(r"NIS\s*\n?([\d-]+)", texto)
+    if nis: d["nis"] = nis.group(1).strip()
 
-    fic_match = re.search(r"(?:No\.\s*)?Ficha\s*(?:de\s*Curso)?\s*\n?(\d+)", texto, re.IGNORECASE)
-    if fic_match: datos["ficha"] = fic_match.group(1).strip()
+    # Cédula e Identificación
+    ced = re.search(r"(?:Identificación|Identificacion)\s*\n?(\d+)", texto)
+    if ced: d["cedula"] = ced.group(1).strip()
 
-    return datos
+    # Ficha de curso
+    fic = re.search(r"Ficha\s*\n?(\d+)", texto)
+    if fic: d["ficha"] = fic.group(1).strip()
+
+    return d
 
 # --- INTERFAZ STREAMLIT ---
 st.set_page_config(page_title=f"SENA Guajira v{VERSION}", layout="wide")
@@ -245,6 +249,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
