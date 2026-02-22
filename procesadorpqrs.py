@@ -45,7 +45,7 @@ def redactar_con_ia(prompt_usuario):
     except Exception as e:
         return f"Error con Gemini 2.5: {e}. Intenta usar 'gemini-2.0-flash' si persiste."
 
-@st.cache_data(show_spinner=False)
+#BORRE
 def extraer_datos_multiformato(img):
     # Esta función es el cerebro que identifica si es PQRS o Oficina Virtual
     texto = pytesseract.image_to_string(img, lang='spa')
@@ -245,6 +245,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
