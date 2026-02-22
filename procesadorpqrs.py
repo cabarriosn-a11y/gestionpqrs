@@ -168,7 +168,7 @@ elif menu == "2. Redactor Inteligente IA (Temas Varios)":
 else:
         st.header(f"📊 Acta de Retiros - {ctx['MES']}")
         if os.path.exists(ARCHIVO_DATOS):
-            df = pd.read_csv(ARCHIVO_DATOS)
+            df = pd.read_csv(ARCHIVO_DATOS, on_bad_lines='skip', sep=',', engine='python', encoding='utf-8-sig')
             st.table(df) # Muestra los datos en la app
             
             if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_acta_auto"):
@@ -206,3 +206,4 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
