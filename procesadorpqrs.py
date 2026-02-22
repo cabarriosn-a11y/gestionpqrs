@@ -163,6 +163,21 @@ else:
     st.header(f"📊 Acta de Retiros - {ctx['MES']}")
     if os.path.exists(ARCHIVO_DATOS):
         df = pd.read_csv(ARCHIVO_DATOS); st.table(df)
+        # --- NUEVAS LÍNEAS DE DIAGNÓSTICO ---
+        st.subheader("🔍 DEBUG: Datos que verá el Word")
+        datos_para_el_acta = df.to_dict(orient='records')
+        st.write(datos_para_el_acta) 
+        # ------------------------------------
+
+        st.table(df) # Tu tabla normal de visualización
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("📝 GENERAR ACTA"):
+                doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
+                # Usamos la variable de diagnóstico aquí:
+                doc.render({**ctx, "lista_aprendices": datos_para_el_acta})
+                b = io.BytesIO(); doc.save(b)
+                st.download_button("Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
         c1, c2 = st.columns(2)
         with c1:
             if st.button("📝 GENERAR ACTA"):
@@ -174,6 +189,7 @@ else:
                 os.remove(ARCHIVO_DATOS); st.rerun()
     else:
         st.warning("No hay registros de retiros.")
+
 
 
 
