@@ -110,36 +110,53 @@ periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Formularios SENA")
 
-    # Sistema de limpieza de casillas
-    if 'v_id' not in st.session_state: st.session_state.v_id = 0
+    # --- PASO 1: INICIALIZAR VARIABLES (Para evitar el AttributeError) ---
+    if 'v_form' not in st.session_state:
+        st.session_state.v_form = 0 # Aquí es donde nace la variable para que no dé error
+    if 'data_ocr' not in st.session_state:
+        st.session_state.data_ocr = {}
+    if 'archivo_id' not in st.session_state:
+        st.session_state.archivo_id = None
 
-    archivo = st.file_uploader("Subir Formulario SENA", type=["tif", "png", "jpg"], key=f"u_{st.session_state.v_id}")
+    # --- PASO 2: CARGADOR DE ARCHIVOS ---
+    v = st.session_state.v_form # Ahora sí puedes usar 'v' porque ya existe arriba
+    archivo = st.file_uploader("Subir Formulario", type=["tif", "png", "jpg"], key=f"u_{v}")
 
     if archivo:
-        # Detectar si es un archivo nuevo
-        if "archivo_actual" not in st.session_state or st.session_state.archivo_actual != archivo.name:
-            with st.spinner("🤖 Leyendo documento..."):
-                st.session_state.ocr_data = extraer_datos_retiros(Image.open(archivo))
-                st.session_state.archivo_actual = archivo.name
-                st.rerun()
+        # Detectar si el archivo es nuevo
+        if st.session_state.archivo_id != archivo.name:
+            with st.spinner("🤖 IA extrayendo datos..."):
+                img = Image.open(archivo)
+                # Llamas a tu función de extracción multiformato
+                st.session_state.data_ocr = extraer_datos_multiformato(img) 
+                st.session_state.archivo_id = archivo.name
+                st.rerun() # Refresca para que los datos caigan en las casillas
 
-        datos = st.session_state.get("ocr_data", {})
-        v = st.session_state.v_id
-
-        # --- CASILLAS QUE SE LLENAN SOLAS ---
+        # --- PASO 3: FORMULARIO ---
+        d = st.session_state.data_ocr
+        
         col1, col2 = st.columns(2)
         with col1:
-            nom = st.text_input("Nombre Aprendiz", value=datos.get("nombre", ""), key=f"n_{v}")
-            ced = st.text_input("Cédula", value=datos.get("cedula", ""), key=f"c_{v}")
+            nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"n_{v}")
+            ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"c_{v}")
+            fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"f_{v}")
         with col2:
-            rad = st.text_input("Radicado", value=datos.get("radicado", ""), key=f"r_{v}")
-            fic = st.text_input("Ficha", value=datos.get("ficha", ""), key=f"f_{v}")
+            rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"r_{v}")
+            nis = st.text_input("NIS", value=d.get("nis", ""), key=f"i_{v}")
+            prog = st.text_input("Programa", key=f"p_{v}")
 
-        if st.button("💾 GUARDAR Y LIMPIAR"):
-            # Aquí va tu código para guardar en el CSV
-            st.success("✅ Guardado correctamente.")
-            st.session_state.v_id += 1 # Esto limpia las casillas para el siguiente
-            del st.session_state.ocr_data
+        # --- PASO 4: BOTÓN GUARDAR Y LIMPIAR ---
+        if st.button("💾 GUARDAR Y LIMPIAR TODO"):
+            # Lógica para guardar en tu CSV (Recuerda definir periodo_actual)
+            nuevo = {"nombre": nom, "cedula": ced, "ficha": fic, "radicado": rad, "periodo": periodo_actual}
+            pd.DataFrame([nuevo]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
+            
+            st.success("✅ Datos guardados correctamente.")
+            
+            # LIMPIEZA TOTAL
+            st.session_state.v_form += 1 # Al cambiar la versión, las casillas quedan vacías
+            st.session_state.data_ocr = {}
+            st.session_state.archivo_id = None
             st.rerun()
 
         d = st.session_state.get("data_ocr", {})
@@ -266,6 +283,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
