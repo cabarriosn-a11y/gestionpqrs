@@ -168,13 +168,28 @@ elif menu == "2. Redactor Inteligente IA (Temas Varios)":
 else:
         st.header(f"📊 Acta de Retiros - {ctx['MES']}")
         if os.path.exists(ARCHIVO_DATOS):
-            # Reemplazo seguro para la línea 165
-            df = pd.read_csv(ARCHIVO_DATOS, on_bad_lines='skip', sep=',', engine='python', encoding='utf-8-sig')
-            st.table(df) # Muestra los datos actuales en la app
+            df = pd.read_csv(ARCHIVO_DATOS)
             
-            # Creamos dos columnas para los botones
+            # --- SECCIÓN NUEVA: BORRAR REGISTRO ESPECÍFICO ---
+            with st.expander("🗑️ ¿Te equivocaste en un registro? Bórralo aquí"):
+                # Creamos una lista de opciones con los nombres y cédulas
+                registro_a_eliminar = st.selectbox(
+                    "Selecciona el registro que deseas quitar:",
+                    options=df.index,
+                    format_func=lambda x: f"{df.iloc[x]['nombre']} (C.C. {df.iloc[x]['cedula']})"
+                )
+                
+                if st.button("❌ Eliminar registro seleccionado", key="btn_delete_one"):
+                    # Eliminamos solo la fila elegida
+                    df = df.drop(registro_a_eliminar)
+                    df.to_csv(ARCHIVO_DATOS, index=False)
+                    st.success("Registro eliminado correctamente.")
+                    st.rerun() # Refrescamos para que desaparezca de la tabla
+            # ------------------------------------------------
+            
+            st.table(df) # Mostramos la tabla actualizada
+            
             col1, col2 = st.columns(2)
-            
             with col1:
                 if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_auto_final"):
                     try:
@@ -183,12 +198,10 @@ else:
                         tabla = subdoc.add_table(rows=1, cols=6)
                         tabla.style = 'Table Grid'
                         
-                        # Encabezados
                         titulos = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
                         for i, texto in enumerate(titulos):
                             tabla.rows[0].cells[i].text = texto
                         
-                        # Llenado de datos
                         for _, fila in df.iterrows():
                             celdas = tabla.add_row().cells
                             celdas[0].text = str(fila['nombre'])
@@ -206,17 +219,12 @@ else:
                         st.error(f"Error: {e}")
 
             with col2:
-                # El "botoncito" para borrar la base de datos y reiniciar
                 if st.button("🚨 REINICIAR MES (Borrar todo)", key="btn_borrar_db"):
                     os.remove(ARCHIVO_DATOS)
-                    st.success("Base de datos borrada. Reiniciando...")
-                    st.rerun() # Refresca la app para mostrar que ya no hay datos
+                    st.success("Base de datos borrada.")
+                    st.rerun()
         else:
             st.warning("No hay registros para este mes.")
-
-
-
-
 
 
 
