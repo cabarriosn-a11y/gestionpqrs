@@ -159,47 +159,49 @@ elif menu == "2. Redactor Inteligente IA (Temas Varios)":
 # ==========================================
 # OPCIÓN 3: ACTA MENSUAL
 # ==========================================
-df = pd.read_csv(ARCHIVO_DATOS)
-        st.table(df) # Solo para ver los datos en la app
-        
-        if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_auto"):
-            try:
-                doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
-                
-                # --- AQUÍ CREAMOS LA TABLA AUTOMÁTICA ---
-                subdoc = doc.new_subdoc()
-                # Creamos tabla de 6 columnas (Headers + Datos)
-                tabla = subdoc.add_table(rows=1, cols=6)
-                tabla.style = 'Table Grid' # Estilo básico con bordes
-                
-                # 1. Ponemos los Títulos
-                encabezados = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
-                hdr_cells = tabla.rows[0].cells
-                for i, nombre_columna in enumerate(encabezados):
-                    hdr_cells[i].text = nombre_columna
+else:
+        st.header(f"📊 Acta de Retiros - {ctx['MES']}")
+        if os.path.exists(ARCHIVO_DATOS):
+            df = pd.read_csv(ARCHIVO_DATOS)
+            st.table(df) # Muestra los datos en la app para verificar
+            
+            if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_acta_auto"):
+                try:
+                    # Abrimos la plantilla
+                    doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
+                    
+                    # Creamos la tabla desde Python (Cuerpo del Acta)
+                    subdoc = doc.new_subdoc()
+                    tabla = subdoc.add_table(rows=1, cols=6)
+                    tabla.style = 'Table Grid' # Agrega bordes automáticamente
+                    
+                    # Definimos los títulos de la tabla
+                    titulos = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
+                    for i, texto in enumerate(titulos):
+                        tabla.rows[0].cells[i].text = texto
+                    
+                    # Llenamos la tabla con la información del sistema
+                    for _, fila in df.iterrows():
+                        celdas = tabla.add_row().cells
+                        celdas[0].text = str(fila['nombre'])
+                        celdas[1].text = str(fila['cedula'])
+                        celdas[2].text = str(fila['ficha'])
+                        celdas[3].text = str(fila['programa'])
+                        celdas[4].text = "Retiro Voluntario"
+                        celdas[5].text = str(fila['radicado'])
+                    
+                    # Insertamos la tabla donde esté la etiqueta en el Word
+                    doc.render({**ctx, "TABLA_RETIROS": subdoc})
+                    
+                    # Preparamos la descarga
+                    b = io.BytesIO()
+                    doc.save(b)
+                    st.download_button("📥 Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
+                    st.success("✅ Acta generada sin errores de diseño")
+                    
+                except Exception as e:
+                    st.error(f"Error técnico al generar el Word: {e}")
 
-                # 2. Llenamos la tabla con los datos del sistema
-                for _, fila in df.iterrows():
-                    row_cells = tabla.add_row().cells
-                    row_cells[0].text = str(fila['nombre'])
-                    row_cells[1].text = str(fila['cedula'])
-                    row_cells[2].text = str(fila['ficha'])
-                    row_cells[3].text = str(fila['programa'])
-                    row_cells[4].text = "Retiro Voluntario"
-                    row_cells[5].text = str(fila['radicado'])
-
-                # 3. Enviamos la tabla al Word
-                doc.render({**ctx, "TABLA_RETIROS": subdoc})
-                
-                # --- FIN DE CREACIÓN DE TABLA ---
-
-                b = io.BytesIO()
-                doc.save(b)
-                st.download_button("📥 Descargar Acta Final", b.getvalue(), f"Acta_{ctx['MES']}.docx")
-                st.success("✅ ¡Tabla generada automáticamente!")
-                
-            except Exception as e:
-                st.error(f"Error técnico: {e}")
 
 
 
