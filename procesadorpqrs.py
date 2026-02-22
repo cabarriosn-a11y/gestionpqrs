@@ -108,22 +108,28 @@ periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Retiros Voluntarios")
 
-    # 1. Inicializamos el 'ID del formulario' si no existe
     if "form_id" not in st.session_state:
         st.session_state.form_id = 0
 
+    # Usamos la key dinámica también en el uploader
     archivo = st.file_uploader("Subir formulario", type=["tif", "png", "jpg"], key=f"up_{st.session_state.form_id}")
 
     if archivo:
-        # 2. Solo hacemos OCR si no tenemos datos en esta sesión
+        # --- NUEVO: DETECTOR DE CAMBIO DE ARCHIVO ---
+        # Si el nombre del archivo es diferente al que teníamos guardado, reseteamos el OCR
+        if "nombre_archivo_track" not in st.session_state or st.session_state.nombre_archivo_track != archivo.name:
+            st.session_state.nombre_archivo_track = archivo.name # Actualizamos el nombre actual
+            if "datos_temp" in st.session_state:
+                del st.session_state.datos_temp # Borramos los datos del aprendiz anterior
+            st.rerun() # Forzamos recarga para que lea el nuevo archivo inmediatamente
+
+        # Solo hacemos OCR si la memoria está vacía (porque acabamos de borrarla arriba)
         if "datos_temp" not in st.session_state:
-            with st.spinner("Leyendo documento..."):
+            with st.spinner("Leyendo nuevo documento..."):
                 img = Image.open(archivo)
                 st.session_state.datos_temp = extraer_datos(img)
         
         d = st.session_state.datos_temp
-        
-        # 3. La CLAVE: Usamos 'st.session_state.form_id' en la KEY para forzar la limpieza
         f_id = st.session_state.form_id
         
         col1, col2 = st.columns(2)
@@ -139,7 +145,6 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
         c1, c2 = st.columns(2)
         
         if c1.button("💾 GUARDAR Y LIMPIAR TODO"):
-            # Guardamos en el CSV
             nuevo = {
                 "nombre": nom.upper(), "cedula": ced, "ficha": fic, 
                 "programa": prog.upper(), "radicado": rad, 
@@ -147,19 +152,17 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
             }
             pd.DataFrame([nuevo]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
             
-            # --- AQUÍ OCURRE LA MAGIA ---
             st.success("✅ Guardado exitosamente.")
             
-            # Al aumentar el form_id, todas las keys (nom_0, ced_0...) mueren 
-            # y nacen nuevas (nom_1, ced_1...), por lo tanto, quedan VACÍAS.
+            # Limpiamos todo para el siguiente registro
             st.session_state.form_id += 1 
-            if "datos_temp" in st.session_state:
-                del st.session_state.datos_temp
+            if "datos_temp" in st.session_state: del st.session_state.datos_temp
+            if "nombre_archivo_track" in st.session_state: del st.session_state.nombre_archivo_track
             
-            st.rerun() # Refresca la pantalla inmediatamente
+            st.rerun()
 
         if c2.button("🖨️ GENERAR CARTA"):
-            # Tu código de Word que ya funciona
+            # Tu lógica de Word
             st.info("Generando documento...")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
@@ -259,6 +262,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
