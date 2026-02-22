@@ -163,44 +163,49 @@ else:
         st.header(f"📊 Acta de Retiros - {ctx['MES']}")
         if os.path.exists(ARCHIVO_DATOS):
             df = pd.read_csv(ARCHIVO_DATOS)
-            st.table(df) # Muestra los datos en la app para verificar
+            st.table(df) # Muestra los datos actuales en la app
             
-            if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_acta_auto"):
-                try:
-                    # Abrimos la plantilla
-                    doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
-                    
-                    # Creamos la tabla desde Python (Cuerpo del Acta)
-                    subdoc = doc.new_subdoc()
-                    tabla = subdoc.add_table(rows=1, cols=6)
-                    tabla.style = 'Table Grid' # Agrega bordes automáticamente
-                    
-                    # Definimos los títulos de la tabla
-                    titulos = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
-                    for i, texto in enumerate(titulos):
-                        tabla.rows[0].cells[i].text = texto
-                    
-                    # Llenamos la tabla con la información del sistema
-                    for _, fila in df.iterrows():
-                        celdas = tabla.add_row().cells
-                        celdas[0].text = str(fila['nombre'])
-                        celdas[1].text = str(fila['cedula'])
-                        celdas[2].text = str(fila['ficha'])
-                        celdas[3].text = str(fila['programa'])
-                        celdas[4].text = "Retiro Voluntario"
-                        celdas[5].text = str(fila['radicado'])
-                    
-                    # Insertamos la tabla donde esté la etiqueta en el Word
-                    doc.render({**ctx, "TABLA_RETIROS": subdoc})
-                    
-                    # Preparamos la descarga
-                    b = io.BytesIO()
-                    doc.save(b)
-                    st.download_button("📥 Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
-                    st.success("✅ Acta generada sin errores de diseño")
-                    
-                except Exception as e:
-                    st.error(f"Error técnico al generar el Word: {e}")
+            # Creamos dos columnas para los botones
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_auto_final"):
+                    try:
+                        doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
+                        subdoc = doc.new_subdoc()
+                        tabla = subdoc.add_table(rows=1, cols=6)
+                        tabla.style = 'Table Grid'
+                        
+                        # Encabezados
+                        titulos = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
+                        for i, texto in enumerate(titulos):
+                            tabla.rows[0].cells[i].text = texto
+                        
+                        # Llenado de datos
+                        for _, fila in df.iterrows():
+                            celdas = tabla.add_row().cells
+                            celdas[0].text = str(fila['nombre'])
+                            celdas[1].text = str(fila['cedula'])
+                            celdas[2].text = str(fila['ficha'])
+                            celdas[3].text = str(fila['programa'])
+                            celdas[4].text = "Retiro Voluntario"
+                            celdas[5].text = str(fila['radicado'])
+                        
+                        doc.render({**ctx, "TABLA_RETIROS": subdoc})
+                        b = io.BytesIO()
+                        doc.save(b)
+                        st.download_button("📥 Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+            with col2:
+                # El "botoncito" para borrar la base de datos y reiniciar
+                if st.button("🚨 REINICIAR MES (Borrar todo)", key="btn_borrar_db"):
+                    os.remove(ARCHIVO_DATOS)
+                    st.success("Base de datos borrada. Reiniciando...")
+                    st.rerun() # Refresca la app para mostrar que ya no hay datos
+        else:
+            st.warning("No hay registros para este mes.")
 
 
 
