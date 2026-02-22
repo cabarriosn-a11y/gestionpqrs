@@ -170,7 +170,29 @@ else:
         if os.path.exists(ARCHIVO_DATOS):
             df = pd.read_csv(ARCHIVO_DATOS, on_bad_lines='skip', sep=',', engine='python', encoding='utf-8-sig')
             st.table(df) # Muestra los datos en la app
+            # --- COPIAR DESDE AQUÍ ---
+            with st.expander("🗑️ ¿Te equivocaste? Borrar un registro específico"):
+            st.warning("Cuidado: Esta acción eliminará el registro permanentemente de la base de datos.")
             
+            # Usamos el 'df' que cargaste en la línea de arriba
+            registro_a_eliminar = st.selectbox(
+                "Selecciona el aprendiz que deseas eliminar:",
+                options=df.index,
+                format_func=lambda x: f"{df.loc[x, 'nombre']} | Cédula: {df.loc[x, 'cedula']}"
+            )
+
+            if st.button("❌ ELIMINAR REGISTRO SELECCIONADO", key="btn_borrar_registro"):
+                try:
+                    # Cargamos el archivo completo para borrar la fila
+                    df_total = pd.read_csv(ARCHIVO_DATOS, on_bad_lines='skip', engine='python', encoding='utf-8-sig')
+                    df_total = df_total.drop(registro_a_eliminar)
+                    df_total.to_csv(ARCHIVO_DATOS, index=False, encoding='utf-8-sig')
+                    
+                    st.success("Registro eliminado correctamente.")
+                    st.rerun() # Esto recarga la página para que la tabla se actualice
+                except Exception as e:
+                    st.error(f"No se pudo eliminar: {e}")
+        # --- HASTA AQUÍ ---
             if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_acta_auto"):
                 try:
                     # Cargamos la plantilla
@@ -206,4 +228,5 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
