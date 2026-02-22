@@ -143,44 +143,95 @@ elif menu == "3. Acta de Cierre Mensual":
     st.header(f"📊 Generación de Acta - {periodo_actual}")
     
     if os.path.exists(ARCHIVO_DATOS):
-        df_full = pd.read_csv(ARCHIVO_DATOS)
-        # Filtramos solo lo del mes actual para el acta
-        df_mes = df_full[df_full['periodo'] == periodo_actual]
-        
-        if not df_mes.empty:
-            # --- BORRADO INDIVIDUAL ---
-            with st.expander("🗑️ Corregir error (Borrar un registro específico)"):
-                registro_idx = st.selectbox("Selecciona para eliminar:", options=df_mes.index, 
-                                            format_func=lambda x: f"{df_mes.loc[x, 'nombre']} - {df_mes.loc[x, 'cedula']}")
-                if st.button("❌ Eliminar este registro"):
-                    df_full = df_full.drop(registro_idx)
-                    df_full.to_csv(ARCHIVO_DATOS, index=False, encoding='utf-8-sig')
-                    st.success("Registro eliminado."); st.rerun()
-
-            st.table(df_mes)
+        try:
+            # --- CARGA ROBUSTA PARA EVITAR EL PARSERERROR ---
+            df_full = pd.read_csv(
+                ARCHIVO_DATOS, 
+                on_bad_lines='skip', 
+                engine='python', 
+                encoding='utf-8-sig'
+            )
             
-            if st.button("📝 GENERAR ACTA AUTOMÁTICA (SUBDOC)"):
-                try:
-                    doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
-                    subdoc = doc.new_subdoc()
-                    tabla = subdoc.add_table(rows=1, cols=6); tabla.style = 'Table Grid'
-                    titulos = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
-                    for i, t in enumerate(titulos): tabla.rows[0].cells[i].text = t
+            # Filtramos solo lo del mes actual para el acta
+            # Aseguramos que la columna 'periodo' exista para evitar errores
+            if 'periodo' in df_full.columns:
+                df_mes = df_full[df_full['periodo'] == periodo_actual]
+            else:
+                st.error("No se encontró la columna 'periodo' en la base de datos.")
+                df_mes = pd.DataFrame()
+
+            if not df_mes.empty:
+                # --- BORRADO INDIVIDUAL ---
+                with st.expander("🗑️ Corregir error (Borrar un registro específico)"):
+                    registro_idx = st.selectbox(
+                        "Selecciona para eliminar:", 
+                        options=df_mes.index, 
+                        format_func=lambda x: f"{df_mes.loc[x, 'nombre']} - {df_mes.loc[x, 'cedula']}"
+                    )
                     
-                    for _, fila in df_mes.iterrows():
-                        c = tabla.add_row().cells
-                        c[0].text, c[1].text, c[2].text = str(fila['nombre']), str(fila['cedula']), str(fila['ficha'])
-                        c[3].text, c[4].text, c[5].text = str(fila['programa']), "Retiro Voluntario", str(fila['radicado'])
-                    
-                    doc.render({**ctx, "TABLA_RETIROS": subdoc})
-                    b = io.BytesIO(); doc.save(b)
-                    st.download_button("📥 Descargar Acta", b.getvalue(), f"Acta_{periodo_actual}.docx")
-                except Exception as e:
-                    st.error(f"Error: {e}")
-        else:
-            st.warning(f"No hay registros guardados para {periodo_actual}")
+                    if st.button("❌ Eliminar este registro"):
+                        df_full = df_full.drop(registro_idx)
+                        df_full.to_csv(ARCHIVO_DATOS, index=False, encoding='utf-8-sig')
+                        st.success("Registro eliminado correctamente.")
+                        st.rerun()
+
+                # Mostrar tabla de datos del mes
+                st.table(df_mes)
+                
+                # --- GENERACIÓN DE WORD (DOCX) ---
+                if st.button("📝 GENERAR ACTA AUTOMÁTICA (SUBDOC)"):
+                    try:
+                        from docxtpl import DocxTemplate
+                        
+                        # Carga de plantilla
+                        doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
+                        subdoc = doc.new_subdoc()
+                        
+                        # Construcción de la tabla en el subdocumento
+                        tabla = subdoc.add_table(rows=1, cols=6)
+                        tabla.style = 'Table Grid'
+                        
+                        titulos = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
+                        for i, t in enumerate(titulos):
+                            tabla.rows[0].cells[i].text = t
+                        
+                        for _, fila in df_mes.iterrows():
+                            c = tabla.add_row().cells
+                            c[0].text = str(fila.get('nombre', ''))
+                            c[1].text = str(fila.get('cedula', ''))
+                            c[2].text = str(fila.get('ficha', ''))
+                            c[3].text = str(fila.get('programa', ''))
+                            c[4].text = "Retiro Voluntario" # O el campo que definas
+                            c[5].text = str(fila.get('radicado', ''))
+                        
+                        # Renderizado del documento con el contexto
+                        # Asegúrate que 'ctx' esté definido previamente en tu código
+                        contexto_final = {**ctx, "TABLA_RETIROS": subdoc}
+                        doc.render(contexto_final)
+                        
+                        # Preparar descarga
+                        b = io.BytesIO()
+                        doc.save(b)
+                        st.download_button(
+                            label="📥 Descargar Acta de Cierre", 
+                            data=b.getvalue(), 
+                            file_name=f"Acta_Cierre_{periodo_actual}.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        )
+                        st.success("¡Acta generada con éxito!")
+
+                    except FileNotFoundError:
+                        st.error("No se encontró el archivo 'Plantilla_Acta_Mensual.docx'. Por favor súbelo al servidor.")
+                    except Exception as e:
+                        st.error(f"Error al generar el Word: {e}")
+            else:
+                st.warning(f"No hay registros guardados para {periodo_actual}")
+
+        except Exception as e:
+            st.error(f"Error crítico al leer los datos: {e}")
+            st.info("Sugerencia: Abre el archivo CSV en Excel, verifica que no haya filas extrañas y guárdalo nuevamente.")
     else:
-        st.info("Aún no existe base de datos.")
+        st.info("Aún no existe base de datos de registros.")
 
 # ==========================================
 # OPCIÓN 4: HISTÓRICO GENERAL (Nuevo Menú)
@@ -201,3 +252,4 @@ else:
         st.download_button("📥 Descargar Excel (CSV) de este mes", csv, f"Historico_{sel_periodo}.csv")
     else:
         st.info("No hay registros históricos todavía.")
+
