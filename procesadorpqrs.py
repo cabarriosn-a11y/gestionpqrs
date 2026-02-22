@@ -98,6 +98,13 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
 # ==========================================
 # OPCIÓN 1: RETIROS
 # ==========================================
+from datetime import datetime
+
+# --- DEFINICIÓN DEL PERIODO (Pégalo arriba de los menús) ---
+meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+fecha_actual = datetime.now()
+periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Retiros Voluntarios")
     
@@ -284,6 +291,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
