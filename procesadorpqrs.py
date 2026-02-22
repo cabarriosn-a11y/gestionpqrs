@@ -169,65 +169,40 @@ else:
         st.header(f"📊 Acta de Retiros - {ctx['MES']}")
         if os.path.exists(ARCHIVO_DATOS):
             df = pd.read_csv(ARCHIVO_DATOS)
+            st.table(df) # Muestra los datos en la app
             
-            # --- SECCIÓN NUEVA: BORRAR REGISTRO ESPECÍFICO ---
-            with st.expander("🗑️ ¿Te equivocaste en un registro? Bórralo aquí"):
-                # Creamos una lista de opciones con los nombres y cédulas
-                registro_a_eliminar = st.selectbox(
-                    "Selecciona el registro que deseas quitar:",
-                    options=df.index,
-                    format_func=lambda x: f"{df.iloc[x]['nombre']} (C.C. {df.iloc[x]['cedula']})"
-                )
-                
-                if st.button("❌ Eliminar registro seleccionado", key="btn_delete_one"):
-                    # Eliminamos solo la fila elegida
-                    df = df.drop(registro_a_eliminar)
-                    df.to_csv(ARCHIVO_DATOS, index=False)
-                    st.success("Registro eliminado correctamente.")
-                    st.rerun() # Refrescamos para que desaparezca de la tabla
-            # ------------------------------------------------
-            
-            st.table(df) # Mostramos la tabla actualizada
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_auto_final"):
-                    try:
-                        doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
-                        subdoc = doc.new_subdoc()
-                        tabla = subdoc.add_table(rows=1, cols=6)
-                        tabla.style = 'Table Grid'
-                        
-                        titulos = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
-                        for i, texto in enumerate(titulos):
-                            tabla.rows[0].cells[i].text = texto
-                        
-                        for _, fila in df.iterrows():
-                            celdas = tabla.add_row().cells
-                            celdas[0].text = str(fila['nombre'])
-                            celdas[1].text = str(fila['cedula'])
-                            celdas[2].text = str(fila['ficha'])
-                            celdas[3].text = str(fila['programa'])
-                            celdas[4].text = "Retiro Voluntario"
-                            celdas[5].text = str(fila['radicado'])
-                        
-                        doc.render({**ctx, "TABLA_RETIROS": subdoc})
-                        b = io.BytesIO()
-                        doc.save(b)
-                        st.download_button("📥 Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
-            with col2:
-                if st.button("🚨 REINICIAR MES (Borrar todo)", key="btn_borrar_db"):
-                    os.remove(ARCHIVO_DATOS)
-                    st.success("Base de datos borrada.")
-                    st.rerun()
-        else:
-            st.warning("No hay registros para este mes.")
-
-
-
-
-
-
+            if st.button("📝 GENERAR ACTA AUTOMÁTICA", key="btn_acta_auto"):
+                try:
+                    # Cargamos la plantilla
+                    doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
+                    
+                    # Creamos la tabla desde Python
+                    subdoc = doc.new_subdoc()
+                    tabla = subdoc.add_table(rows=1, cols=6)
+                    tabla.style = 'Table Grid'
+                    
+                    # Títulos de la tabla
+                    titulos = ['Nombre', 'Identificación', 'Ficha', 'Programa', 'Novedad', 'Radicado']
+                    for i, texto in enumerate(titulos):
+                        tabla.rows[0].cells[i].text = texto
+                    
+                    # Llenamos con los datos del sistema
+                    for _, fila in df.iterrows():
+                        celdas = tabla.add_row().cells
+                        celdas[0].text = str(fila['nombre'])
+                        celdas[1].text = str(fila['cedula'])
+                        celdas[2].text = str(fila['ficha'])
+                        celdas[3].text = str(fila['programa'])
+                        celdas[4].text = "Retiro Voluntario"
+                        celdas[5].text = str(fila['radicado'])
+                    
+                    # Insertamos la tabla en la etiqueta {{ TABLA_RETIROS }}
+                    doc.render({**ctx, "TABLA_RETIROS": subdoc})
+                    
+                    b = io.BytesIO()
+                    doc.save(b)
+                    st.download_button("📥 Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
+                    st.success("✅ ¡Tabla generada exitosamente!")
+                    
+                except Exception as e:
+                    st.error(f"Error técnico: {e}")
