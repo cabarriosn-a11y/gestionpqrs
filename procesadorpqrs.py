@@ -45,7 +45,36 @@ def redactar_con_ia(prompt_usuario):
     except Exception as e:
         return f"Error con Gemini 2.5: {e}. Intenta usar 'gemini-2.0-flash' si persiste."
 
-#BORRE
+# --- ESTA ES LA FUNCIÓN QUE TE DA EL NAMEERROR SI NO ESTÁ AQUÍ ARRIBA ---
+def extraer_datos_multiformato(img):
+    # Forzamos lectura en español para detectar tildes y etiquetas del SENA
+    texto = pytesseract.image_to_string(img, lang='spa')
+    datos = {"nombre": "", "cedula": "", "ficha": "", "radicado": "", "nis": "", "email": ""}
+
+    # 🔍 Búsqueda de Radicado y NIS
+    rad = re.search(r"(?:Radicado|No\.\s*Radicado)\s*\n?([\d-]+)", texto, re.IGNORECASE)
+    if rad: datos["radicado"] = rad.group(1).strip()
+
+    nis = re.search(r"N\.?I\.?S\s*\n?([\d-]+)", texto, re.IGNORECASE)
+    if nis: datos["nis"] = nis.group(1).strip()
+
+    # 🔍 Búsqueda de Nombre (Portal PQRS vs Oficina Virtual)
+    if "Nombre Persona" in texto:
+        nom = re.search(r"Nombre Persona\s*\n+(.*)", texto, re.IGNORECASE)
+        if nom: datos["nombre"] = nom.group(1).strip().upper()
+    else:
+        n = re.search(r"Nombres\s*\n+(.*)", texto, re.IGNORECASE)
+        a = re.search(r"Apellidos\s*\n+(.*)", texto, re.IGNORECASE)
+        if n and a: datos["nombre"] = f"{n.group(1).strip()} {a.group(1).strip()}".upper()
+
+    # 🔍 Búsqueda de Cédula y Ficha
+    ced = re.search(r"(?:Identificación|Identificacion)\s*\n?(\d+)", texto, re.IGNORECASE)
+    if ced: datos["cedula"] = ced.group(1).strip()
+
+    fic = re.search(r"Ficha\s*(?:de\s*Curso)?\s*\n?(\d+)", texto, re.IGNORECASE)
+    if fic: datos["ficha"] = fic.group(1).strip()
+
+    return datos
 def extraer_datos_retiros(img):
     # Usamos 'spa' porque tus documentos son del SENA en español
     texto = pytesseract.image_to_string(img, lang='spa')
@@ -283,6 +312,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
