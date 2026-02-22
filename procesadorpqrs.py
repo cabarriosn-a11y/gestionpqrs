@@ -108,53 +108,56 @@ periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Retiros Voluntarios")
 
-    # 1. INICIALIZACIÓN DEL ESTADO MAESTRO
-    if 'reset_n' not in st.session_state:
-        st.session_state.reset_n = 0  # Contador de versión del formulario
-    if 'datos_ocr' not in st.session_state:
-        st.session_state.datos_ocr = {}
-    if 'archivo_procesado' not in st.session_state:
-        st.session_state.archivo_procesado = None
+    # 1. Inicialización de estados críticos
+    if 'reset_n' not in st.session_state: st.session_state.reset_n = 0
+    if 'datos_ocr' not in st.session_state: st.session_state.datos_ocr = {}
+    if 'archivo_anterior' not in st.session_state: st.session_state.archivo_anterior = None
 
-    # 2. CARGADOR CON LLAVE DINÁMICA
-    # Si cambiamos 'reset_n', el cargador de archivos también se limpia solo
+    # 2. Cargador con llave dinámica (se limpia al guardar)
     archivo = st.file_uploader("Subir formulario", type=["tif", "png", "jpg"], key=f"up_{st.session_state.reset_n}")
 
-    # 3. LÓGICA DE DETECCIÓN DE CAMBIO REAL
+    # 3. LÓGICA DE DETECCIÓN Y PROCESAMIENTO
     if archivo:
-        # Si el archivo es nuevo (o diferente al anterior)
-        if st.session_state.archivo_procesado != archivo.name:
-            with st.spinner("IA extrayendo datos nuevos..."):
-                img = Image.open(archivo)
-                # Guardamos los datos nuevos directamente en el estado
-                st.session_state.datos_ocr = extraer_datos(img)
-                st.session_state.archivo_procesado = archivo.name
-                # NO hacemos rerun aquí para dejar que los widgets se dibujen con la nueva versión
+        # Si el nombre del archivo cambió, procesamos OCR de inmediato
+        if st.session_state.archivo_anterior != archivo.name:
+            with st.spinner("🤖 IA Leyendo documento..."):
+                try:
+                    img = Image.open(archivo)
+                    # Llamamos a tu función de extracción
+                    resultado = extraer_datos(img)
+                    
+                    # Guardamos en la sesión y marcamos el archivo como procesado
+                    st.session_state.datos_ocr = resultado
+                    st.session_state.archivo_anterior = archivo.name
+                    st.rerun() # RECARGA para inyectar los datos en los inputs
+                except Exception as e:
+                    st.error(f"Error al leer la imagen: {e}")
     else:
-        # Si quitan el archivo, limpiamos la memoria del OCR
-        st.session_state.datos_ocr = {}
-        st.session_state.archivo_procesado = None
+        # Si no hay archivo, nos aseguramos que la memoria esté lista para el próximo
+        if st.session_state.datos_ocr != {}:
+            st.session_state.datos_ocr = {}
+            st.session_state.archivo_anterior = None
 
-    # 4. EL FORMULARIO (Fuente de verdad: st.session_state.datos_ocr)
+    # 4. FORMULARIO (Fuente de verdad única: st.session_state.datos_ocr)
     d = st.session_state.datos_ocr
-    v = st.session_state.reset_n # Nuestra versión actual
+    v = st.session_state.reset_n
 
     col1, col2 = st.columns(2)
     with col1:
-        # IMPORTANTE: La 'key' cambia si reset_n aumenta, obligando a vaciar la celda
+        # El 'value' se alimenta directamente de lo que la IA extrajo
         nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"n_{v}")
         ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"c_{v}")
         fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"f_{v}")
     with col2:
         rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"r_{v}")
-        prog = st.text_input("Programa", key=f"p_{v}")
+        prog = st.text_input("Programa", value=d.get("programa", ""), key=f"p_{v}")
         nov = "Retiro Voluntario"
 
-    # 5. BOTONES DE ACCIÓN
+    # 5. BOTONES
     c1, c2 = st.columns(2)
     
     if c1.button("💾 GUARDAR Y LIMPIAR TODO"):
-        if nom and ced: # Validación básica
+        if nom and ced:
             # Guardar en CSV
             nuevo = {
                 "nombre": nom.upper(), "cedula": ced, "ficha": fic, 
@@ -163,21 +166,19 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
             }
             pd.DataFrame([nuevo]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
             
-            st.success(f"✅ {nom} guardado correctamente.")
+            st.success(f"✅ ¡{nom} guardado!")
             
-            # --- EL GOLPE DE GRACIA ---
-            # Aumentamos el contador: esto cambia todas las KEYS del formulario
+            # RESET TOTAL: Cambiamos versión y borramos rastro del archivo
             st.session_state.reset_n += 1 
             st.session_state.datos_ocr = {}
-            st.session_state.archivo_procesado = None
-            
-            st.rerun() # Reinicio total
+            st.session_state.archivo_anterior = None
+            st.rerun()
         else:
-            st.error("Por favor, asegúrate de que el nombre y la cédula no estén vacíos.")
+            st.warning("⚠️ El OCR no detectó datos. Por favor escanea de nuevo o escribe manualmente.")
 
     if c2.button("🖨️ GENERAR CARTA"):
-        # Tu lógica de Word (puedes usar las variables 'nom', 'ced', etc.)
-        st.info("Generando documento...")
+        # Tu lógica de Word aquí
+        st.info("Generando carta...")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -276,6 +277,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
