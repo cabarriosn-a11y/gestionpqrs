@@ -108,47 +108,43 @@ periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Retiros Voluntarios")
     
+    # 1. Creamos un contador de versión en la memoria si no existe
+    if "version_formulario" not in st.session_state:
+        st.session_state["version_formulario"] = 0
+
     archivo = st.file_uploader("Subir formulario de retiro", type=["tif", "png", "jpg"], key="uploader_retiro")
     
     if archivo:
-        # --- NUEVO: DETECTOR DE CAMBIO DE ARCHIVO ---
-        # Si subes un archivo diferente, limpiamos los datos del anterior automáticamente
-        if "ultimo_archivo_nombre" not in st.session_state or st.session_state["ultimo_archivo_nombre"] != archivo.name:
-            st.session_state["ultimo_archivo_nombre"] = archivo.name
-            
-            # Lista de llaves a limpiar al detectar nuevo archivo
-            llaves_a_limpiar = [
-                "datos_ocr", "nombre_input", "cedula_input", 
-                "ficha_input", "radicado_input", "programa_input", "archivo_word"
-            ]
-            for k in llaves_a_limpiar:
-                if k in st.session_state:
-                    del st.session_state[k]
-            st.rerun() # Reiniciamos para que los inputs nazcan vacíos o con el nuevo OCR
+        # 2. DETECTOR DE CAMBIO: Si el archivo es nuevo, aumentamos la versión
+        if "ultimo_archivo" not in st.session_state or st.session_state["ultimo_archivo"] != archivo.name:
+            st.session_state["ultimo_archivo"] = archivo.name
+            st.session_state["version_formulario"] += 1 # Al cambiar la versión, los inputs se reinician
+            st.rerun()
 
-        # --- PROCESAMIENTO OCR ---
+        # 3. PROCESAMIENTO OCR
+        # Solo extraemos si no hay datos guardados para esta versión
         if "datos_ocr" not in st.session_state:
-            with st.spinner("Extrayendo datos del nuevo archivo..."):
-                img = Image.open(archivo)
-                st.session_state["datos_ocr"] = extraer_datos(img)
+            img = Image.open(archivo)
+            st.session_state["datos_ocr"] = extraer_datos(img)
 
         d_ocr = st.session_state["datos_ocr"]
-
-        # --- FORMULARIO ---
+        
+        # --- FORMULARIO CON LLAVES DINÁMICAS ---
+        # Al sumar la 'version_formulario' a la key, Streamlit cree que son cuadros nuevos y NO arrastra datos
+        v = st.session_state["version_formulario"]
+        
         col1, col2 = st.columns(2)
         with col1:
-            # Usamos el valor del OCR solo como base, pero la 'key' manda en la memoria
-            nom = st.text_input("Nombre Aprendiz", value=d_ocr.get("nombre", ""), key="nombre_input")
-            ced = st.text_input("Cédula", value=d_ocr.get("cedula", ""), key="cedula_input")
-            fic = st.text_input("Ficha", value=d_ocr.get("ficha", ""), key="ficha_input")
+            nom = st.text_input("Nombre Aprendiz", value=d_ocr.get("nombre", ""), key=f"nom_{v}")
+            ced = st.text_input("Cédula", value=d_ocr.get("cedula", ""), key=f"ced_{v}")
+            fic = st.text_input("Ficha", value=d_ocr.get("fic", ""), key=f"fic_{v}")
         with col2:
-            rad = st.text_input("Radicado", value=d_ocr.get("radicado", ""), key="radicado_input")
-            prog = st.text_input("Programa", key="programa_input")
+            rad = st.text_input("Radicado", value=d_ocr.get("radicado", ""), key=f"rad_{v}")
+            prog = st.text_input("Programa", key=f"prog_{v}")
             nov = "Retiro Voluntario"
 
         c1, c2 = st.columns(2)
         
-        # --- BOTÓN GUARDAR ---
         if c1.button("💾 GUARDAR EN LISTA"):
             nuevo_dato = {
                 "nombre": nom.upper(), "cedula": ced, "ficha": fic, 
@@ -156,24 +152,23 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
                 "periodo": periodo_actual 
             }
             pd.DataFrame([nuevo_dato]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
-            st.success("✅ Guardado con éxito.")
             
-            # Limpiamos todo para el siguiente
-            for k in ["nombre_input", "cedula_input", "ficha_input", "radicado_input", "programa_input", "datos_ocr"]:
-                if k in st.session_state: del st.session_state[k]
+            # LIMPIEZA TOTAL TRAS GUARDAR
+            st.success("✅ ¡Guardado! Preparando siguiente formulario...")
+            st.session_state["version_formulario"] += 1 # Forzamos cambio de versión
+            if "datos_ocr" in st.session_state: del st.session_state["datos_ocr"]
             st.rerun()
 
-        # --- BOTÓN GENERAR CARTA ---
         if c2.button("🖨️ GENERAR CARTA DE RETIRO"):
+            # Lógica de generación de Word (igual que antes)
             doc = DocxTemplate("Plantilla_PQRS.docx")
-            doc.render({**ctx, "NOMBRE": nom, "CEDULA": ced, "FICHA": fic, "PROGRAMA": prog, "RADICADO": rad, "CUERPO": "Se tramita retiro voluntario según solicitud oficial."})
+            doc.render({**ctx, "NOMBRE": nom, "CEDULA": ced, "FICHA": fic, "PROGRAMA": prog, "RADICADO": rad, "CUERPO": "Se tramita retiro voluntario."})
             b = io.BytesIO(); doc.save(b)
-            st.session_state["archivo_word"] = b.getvalue()
-            st.info("Carta generada. Descárgala abajo.")
+            st.session_state["word_temp"] = b.getvalue()
+            st.info("Carta lista.")
 
-        if "archivo_word" in st.session_state:
-            st.download_button("📥 Descargar Carta", st.session_state["archivo_word"], f"Retiro_{ced}.docx")
-            
+        if "word_temp" in st.session_state:
+            st.download_button("📥 Descargar Carta", st.session_state["word_temp"], f"Retiro_{ced}.docx")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -272,6 +267,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
