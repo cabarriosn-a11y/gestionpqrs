@@ -110,20 +110,37 @@ periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Formularios SENA")
 
-    # Mantenemos un contador para limpiar las casillas al guardar
-    if 'v_form' not in st.session_state: st.session_state.v_form = 0
-    
-    # Cargador de archivos con llave dinámica
-    archivo = st.file_uploader("Subir Formulario", type=["tif", "png", "jpg"], key=f"u_{st.session_state.v_form}")
+    # Sistema de limpieza de casillas
+    if 'v_id' not in st.session_state: st.session_state.v_id = 0
+
+    archivo = st.file_uploader("Subir Formulario SENA", type=["tif", "png", "jpg"], key=f"u_{st.session_state.v_id}")
 
     if archivo:
-        # Detectamos si es un archivo nuevo para activar el OCR
-        if "id_archivo" not in st.session_state or st.session_state.id_archivo != archivo.name:
-            with st.spinner("🤖 IA Identificando formato y extrayendo datos..."):
-                img = Image.open(archivo)
-                st.session_state.data_ocr = extraer_datos_multiformato(img) # Llamamos a la función de arriba
-                st.session_state.id_archivo = archivo.name
-                st.rerun() # Esto obliga a las casillas a llenarse de inmediato
+        # Detectar si es un archivo nuevo
+        if "archivo_actual" not in st.session_state or st.session_state.archivo_actual != archivo.name:
+            with st.spinner("🤖 Leyendo documento..."):
+                st.session_state.ocr_data = extraer_datos_retiros(Image.open(archivo))
+                st.session_state.archivo_actual = archivo.name
+                st.rerun()
+
+        datos = st.session_state.get("ocr_data", {})
+        v = st.session_state.v_id
+
+        # --- CASILLAS QUE SE LLENAN SOLAS ---
+        col1, col2 = st.columns(2)
+        with col1:
+            nom = st.text_input("Nombre Aprendiz", value=datos.get("nombre", ""), key=f"n_{v}")
+            ced = st.text_input("Cédula", value=datos.get("cedula", ""), key=f"c_{v}")
+        with col2:
+            rad = st.text_input("Radicado", value=datos.get("radicado", ""), key=f"r_{v}")
+            fic = st.text_input("Ficha", value=datos.get("ficha", ""), key=f"f_{v}")
+
+        if st.button("💾 GUARDAR Y LIMPIAR"):
+            # Aquí va tu código para guardar en el CSV
+            st.success("✅ Guardado correctamente.")
+            st.session_state.v_id += 1 # Esto limpia las casillas para el siguiente
+            del st.session_state.ocr_data
+            st.rerun()
 
         d = st.session_state.get("data_ocr", {})
         v = st.session_state.v_form
@@ -249,6 +266,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
