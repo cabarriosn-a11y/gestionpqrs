@@ -108,43 +108,54 @@ periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Retiros Voluntarios")
 
-    if "form_id" not in st.session_state:
-        st.session_state.form_id = 0
+    # 1. INICIALIZACIÓN DEL ESTADO MAESTRO
+    if 'reset_n' not in st.session_state:
+        st.session_state.reset_n = 0  # Contador de versión del formulario
+    if 'datos_ocr' not in st.session_state:
+        st.session_state.datos_ocr = {}
+    if 'archivo_procesado' not in st.session_state:
+        st.session_state.archivo_procesado = None
 
-    # Usamos la key dinámica también en el uploader
-    archivo = st.file_uploader("Subir formulario", type=["tif", "png", "jpg"], key=f"up_{st.session_state.form_id}")
+    # 2. CARGADOR CON LLAVE DINÁMICA
+    # Si cambiamos 'reset_n', el cargador de archivos también se limpia solo
+    archivo = st.file_uploader("Subir formulario", type=["tif", "png", "jpg"], key=f"up_{st.session_state.reset_n}")
 
+    # 3. LÓGICA DE DETECCIÓN DE CAMBIO REAL
     if archivo:
-        # --- NUEVO: DETECTOR DE CAMBIO DE ARCHIVO ---
-        # Si el nombre del archivo es diferente al que teníamos guardado, reseteamos el OCR
-        if "nombre_archivo_track" not in st.session_state or st.session_state.nombre_archivo_track != archivo.name:
-            st.session_state.nombre_archivo_track = archivo.name # Actualizamos el nombre actual
-            if "datos_temp" in st.session_state:
-                del st.session_state.datos_temp # Borramos los datos del aprendiz anterior
-            st.rerun() # Forzamos recarga para que lea el nuevo archivo inmediatamente
-
-        # Solo hacemos OCR si la memoria está vacía (porque acabamos de borrarla arriba)
-        if "datos_temp" not in st.session_state:
-            with st.spinner("Leyendo nuevo documento..."):
+        # Si el archivo es nuevo (o diferente al anterior)
+        if st.session_state.archivo_procesado != archivo.name:
+            with st.spinner("IA extrayendo datos nuevos..."):
                 img = Image.open(archivo)
-                st.session_state.datos_temp = extraer_datos(img)
-        
-        d = st.session_state.datos_temp
-        f_id = st.session_state.form_id
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"nom_{f_id}")
-            ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"ced_{f_id}")
-            fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"fic_{f_id}")
-        with col2:
-            rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"rad_{f_id}")
-            prog = st.text_input("Programa", key=f"prog_{f_id}")
-            nov = "Retiro Voluntario"
+                # Guardamos los datos nuevos directamente en el estado
+                st.session_state.datos_ocr = extraer_datos(img)
+                st.session_state.archivo_procesado = archivo.name
+                # NO hacemos rerun aquí para dejar que los widgets se dibujen con la nueva versión
+    else:
+        # Si quitan el archivo, limpiamos la memoria del OCR
+        st.session_state.datos_ocr = {}
+        st.session_state.archivo_procesado = None
 
-        c1, c2 = st.columns(2)
-        
-        if c1.button("💾 GUARDAR Y LIMPIAR TODO"):
+    # 4. EL FORMULARIO (Fuente de verdad: st.session_state.datos_ocr)
+    d = st.session_state.datos_ocr
+    v = st.session_state.reset_n # Nuestra versión actual
+
+    col1, col2 = st.columns(2)
+    with col1:
+        # IMPORTANTE: La 'key' cambia si reset_n aumenta, obligando a vaciar la celda
+        nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"n_{v}")
+        ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"c_{v}")
+        fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"f_{v}")
+    with col2:
+        rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"r_{v}")
+        prog = st.text_input("Programa", key=f"p_{v}")
+        nov = "Retiro Voluntario"
+
+    # 5. BOTONES DE ACCIÓN
+    c1, c2 = st.columns(2)
+    
+    if c1.button("💾 GUARDAR Y LIMPIAR TODO"):
+        if nom and ced: # Validación básica
+            # Guardar en CSV
             nuevo = {
                 "nombre": nom.upper(), "cedula": ced, "ficha": fic, 
                 "programa": prog.upper(), "radicado": rad, 
@@ -152,18 +163,21 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
             }
             pd.DataFrame([nuevo]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
             
-            st.success("✅ Guardado exitosamente.")
+            st.success(f"✅ {nom} guardado correctamente.")
             
-            # Limpiamos todo para el siguiente registro
-            st.session_state.form_id += 1 
-            if "datos_temp" in st.session_state: del st.session_state.datos_temp
-            if "nombre_archivo_track" in st.session_state: del st.session_state.nombre_archivo_track
+            # --- EL GOLPE DE GRACIA ---
+            # Aumentamos el contador: esto cambia todas las KEYS del formulario
+            st.session_state.reset_n += 1 
+            st.session_state.datos_ocr = {}
+            st.session_state.archivo_procesado = None
             
-            st.rerun()
+            st.rerun() # Reinicio total
+        else:
+            st.error("Por favor, asegúrate de que el nombre y la cédula no estén vacíos.")
 
-        if c2.button("🖨️ GENERAR CARTA"):
-            # Tu lógica de Word
-            st.info("Generando documento...")
+    if c2.button("🖨️ GENERAR CARTA"):
+        # Tu lógica de Word (puedes usar las variables 'nom', 'ced', etc.)
+        st.info("Generando documento...")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -262,6 +276,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
