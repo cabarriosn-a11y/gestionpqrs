@@ -108,24 +108,41 @@ periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Retiros Voluntarios")
     
-    # Usamos un key para que el uploader también se pueda resetear
     archivo = st.file_uploader("Subir formulario de retiro", type=["tif", "png", "jpg"], key="uploader_retiro")
     
     if archivo:
-        # Solo ejecutamos OCR si no tenemos los datos en sesión (para no borrar lo que edites manualmente)
+        # --- NUEVO: DETECTOR DE CAMBIO DE ARCHIVO ---
+        # Si subes un archivo diferente, limpiamos los datos del anterior automáticamente
+        if "ultimo_archivo_nombre" not in st.session_state or st.session_state["ultimo_archivo_nombre"] != archivo.name:
+            st.session_state["ultimo_archivo_nombre"] = archivo.name
+            
+            # Lista de llaves a limpiar al detectar nuevo archivo
+            llaves_a_limpiar = [
+                "datos_ocr", "nombre_input", "cedula_input", 
+                "ficha_input", "radicado_input", "programa_input", "archivo_word"
+            ]
+            for k in llaves_a_limpiar:
+                if k in st.session_state:
+                    del st.session_state[k]
+            st.rerun() # Reiniciamos para que los inputs nazcan vacíos o con el nuevo OCR
+
+        # --- PROCESAMIENTO OCR ---
         if "datos_ocr" not in st.session_state:
-            img = Image.open(archivo)
-            st.session_state["datos_ocr"] = extraer_datos(img)
+            with st.spinner("Extrayendo datos del nuevo archivo..."):
+                img = Image.open(archivo)
+                st.session_state["datos_ocr"] = extraer_datos(img)
 
         d_ocr = st.session_state["datos_ocr"]
 
+        # --- FORMULARIO ---
         col1, col2 = st.columns(2)
         with col1:
-            nom = st.text_input("Nombre Aprendiz", value=d_ocr["nombre"], key="nombre_input")
-            ced = st.text_input("Cédula", value=d_ocr["cedula"], key="cedula_input")
-            fic = st.text_input("Ficha", value=d_ocr["ficha"], key="ficha_input")
+            # Usamos el valor del OCR solo como base, pero la 'key' manda en la memoria
+            nom = st.text_input("Nombre Aprendiz", value=d_ocr.get("nombre", ""), key="nombre_input")
+            ced = st.text_input("Cédula", value=d_ocr.get("cedula", ""), key="cedula_input")
+            fic = st.text_input("Ficha", value=d_ocr.get("ficha", ""), key="ficha_input")
         with col2:
-            rad = st.text_input("Radicado", value=d_ocr["radicado"], key="radicado_input")
+            rad = st.text_input("Radicado", value=d_ocr.get("radicado", ""), key="radicado_input")
             prog = st.text_input("Programa", key="programa_input")
             nov = "Retiro Voluntario"
 
@@ -133,65 +150,29 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
         
         # --- BOTÓN GUARDAR ---
         if c1.button("💾 GUARDAR EN LISTA"):
-            # Guardamos con 'periodo' para que aparezca en la Sesión 3 (Actas)
             nuevo_dato = {
-                "nombre": nom.upper(), 
-                "cedula": ced, 
-                "ficha": fic, 
-                "programa": prog.upper(), 
-                "radicado": rad, 
-                "novedad": nov,
-                "periodo": periodo_actual # MUY IMPORTANTE para el acta mensual
+                "nombre": nom.upper(), "cedula": ced, "ficha": fic, 
+                "programa": prog.upper(), "radicado": rad, "novedad": nov,
+                "periodo": periodo_actual 
             }
+            pd.DataFrame([nuevo_dato]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
+            st.success("✅ Guardado con éxito.")
             
-            pd.DataFrame([nuevo_dato]).to_csv(
-                ARCHIVO_DATOS, 
-                mode='a', 
-                header=not os.path.exists(ARCHIVO_DATOS), 
-                index=False, 
-                encoding='utf-8-sig'
-            )
-            
-            st.success("✅ Guardado para el acta mensual.")
-            
-            # >>> LIMPIEZA DE SESIÓN (Solo ocurre tras guardar) <<<
-            for key in ["nombre_input", "cedula_input", "ficha_input", "radicado_input", "programa_input", "datos_ocr"]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            
-            st.rerun() # Refresca la app y limpia los campos
+            # Limpiamos todo para el siguiente
+            for k in ["nombre_input", "cedula_input", "ficha_input", "radicado_input", "programa_input", "datos_ocr"]:
+                if k in st.session_state: del st.session_state[k]
+            st.rerun()
 
         # --- BOTÓN GENERAR CARTA ---
         if c2.button("🖨️ GENERAR CARTA DE RETIRO"):
-            try:
-                doc = DocxTemplate("Plantilla_PQRS.docx")
-                contexto_word = {
-                    **ctx, 
-                    "NOMBRE": nom, 
-                    "CEDULA": ced, 
-                    "FICHA": fic, 
-                    "PROGRAMA": prog, 
-                    "RADICADO": rad, 
-                    "CUERPO": "Se tramita retiro voluntario según solicitud oficial."
-                }
-                doc.render(contexto_word)
-                
-                # Guardamos en un buffer para que el botón de descarga funcione bien
-                b = io.BytesIO()
-                doc.save(b)
-                st.session_state["archivo_word"] = b.getvalue()
-                st.session_state["nombre_archivo"] = f"Retiro_{ced}.docx"
-                st.info("Documento listo para descargar abajo ↓")
-            except Exception as e:
-                st.error(f"Error al generar Word: {e}")
+            doc = DocxTemplate("Plantilla_PQRS.docx")
+            doc.render({**ctx, "NOMBRE": nom, "CEDULA": ced, "FICHA": fic, "PROGRAMA": prog, "RADICADO": rad, "CUERPO": "Se tramita retiro voluntario según solicitud oficial."})
+            b = io.BytesIO(); doc.save(b)
+            st.session_state["archivo_word"] = b.getvalue()
+            st.info("Carta generada. Descárgala abajo.")
 
-        # Aparece el botón de descarga solo si ya se generó el archivo
         if "archivo_word" in st.session_state:
-            st.download_button(
-                label="📥 Descargar Carta",
-                data=st.session_state["archivo_word"],
-                file_name=st.session_state["nombre_archivo"],
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            st.download_button("📥 Descargar Carta", st.session_state["archivo_word"], f"Retiro_{ced}.docx")
             )
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
@@ -291,6 +272,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
