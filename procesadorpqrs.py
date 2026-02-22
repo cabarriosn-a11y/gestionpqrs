@@ -118,7 +118,13 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
         if c1.button("💾 GUARDAR EN LISTA"):
             pd.DataFrame([{"nombre": nom.upper(), "cedula": ced, "ficha": fic, "programa": prog.upper(), "radicado": rad, "novedad": nov}]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
             st.success("✅ Guardado para el acta mensual.")
-        
+        # >>> AQUÍ PEGAS EL CÓDIGO DE LIMPIEZA <<<
+        for key in ["nombre_input", "cedula_input", "ficha_input", "radicado_input"]:
+            if key in st.session_state:
+                del st.session_state[key]
+    
+        # El st.rerun() hace que la página se refresque y los campos queden limpios
+        st.rerun()
         if c2.button("🖨️ GENERAR CARTA DE RETIRO"):
             doc = DocxTemplate("Plantilla_PQRS.docx")
             doc.render({**ctx, "NOMBRE": nom, "CEDULA": ced, "FICHA": fic, "PROGRAMA": prog, "RADICADO": rad, "CUERPO": "Se tramita retiro voluntario según solicitud oficial."})
@@ -207,6 +213,7 @@ else:
                     st.rerun() # Refresca la app para mostrar que ya no hay datos
         else:
             st.warning("No hay registros para este mes.")
+
 
 
 
