@@ -108,64 +108,58 @@ periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Retiros Voluntarios")
 
-    # 1. Función para limpiar TODO el rastro de la sesión
-    def limpiar_todo():
-        for key in ["nom_val", "ced_val", "fic_val", "rad_val", "prog_val", "ocr_listo"]:
-            if key in st.session_state:
-                st.session_state[key] = "" # Lo dejamos vacío
-        if "archivo_word" in st.session_state:
-            del st.session_state["archivo_word"]
+    # 1. Inicializamos el 'ID del formulario' si no existe
+    if "form_id" not in st.session_state:
+        st.session_state.form_id = 0
 
-    # 2. El cargador de archivos
-    archivo = st.file_uploader("Subir formulario", type=["tif", "png", "jpg"], key="uploader")
+    archivo = st.file_uploader("Subir formulario", type=["tif", "png", "jpg"], key=f"up_{st.session_state.form_id}")
 
-    # Si NO hay archivo, limpiamos para que al quitar el archivo no queden datos
-    if not archivo:
-        limpiar_todo()
-    
     if archivo:
-        # 3. Solo si el archivo es NUEVO, procesamos y sobreescribimos la memoria
-        if "nombre_archivo_actual" not in st.session_state or st.session_state["nombre_archivo_actual"] != archivo.name:
-            st.session_state["nombre_archivo_actual"] = archivo.name
-            
-            # Ejecutamos OCR y guardamos directamente en variables de control
-            with st.spinner("Procesando nuevo aprendiz..."):
-                datos = extraer_datos(Image.open(archivo))
-                st.session_state["nom_val"] = datos.get("nombre", "").upper()
-                st.session_state["ced_val"] = datos.get("cedula", "")
-                st.session_state["fic_val"] = datos.get("ficha", "")
-                st.session_state["rad_val"] = datos.get("radicado", "")
-                st.session_state["prog_val"] = "" # Programa siempre vacío para nuevo registro
-            st.rerun()
-
-        # 4. FORMULARIO: Los valores vienen SIEMPRE de la memoria st.session_state
+        # 2. Solo hacemos OCR si no tenemos datos en esta sesión
+        if "datos_temp" not in st.session_state:
+            with st.spinner("Leyendo documento..."):
+                img = Image.open(archivo)
+                st.session_state.datos_temp = extraer_datos(img)
+        
+        d = st.session_state.datos_temp
+        
+        # 3. La CLAVE: Usamos 'st.session_state.form_id' en la KEY para forzar la limpieza
+        f_id = st.session_state.form_id
+        
         col1, col2 = st.columns(2)
         with col1:
-            # IMPORTANTE: No usamos 'value', usamos el valor guardado en memoria
-            nom = st.text_input("Nombre Aprendiz", value=st.session_state.get("nom_val", ""))
-            ced = st.text_input("Cédula", value=st.session_state.get("ced_val", ""))
-            fic = st.text_input("Ficha", value=st.session_state.get("fic_val", ""))
+            nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"nom_{f_id}")
+            ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"ced_{f_id}")
+            fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"fic_{f_id}")
         with col2:
-            rad = st.text_input("Radicado", value=st.session_state.get("rad_val", ""))
-            prog = st.text_input("Programa", value=st.session_state.get("prog_val", ""))
+            rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"rad_{f_id}")
+            prog = st.text_input("Programa", key=f"prog_{f_id}")
             nov = "Retiro Voluntario"
 
-        # --- BOTONES ---
         c1, c2 = st.columns(2)
         
-        if c1.button("💾 GUARDAR Y LIMPIAR"):
-            # Guardar en CSV
-            nuevo = {"nombre": nom.upper(), "cedula": ced, "ficha": fic, 
-                     "programa": prog.upper(), "radicado": rad, "novedad": nov, "periodo": periodo_actual}
+        if c1.button("💾 GUARDAR Y LIMPIAR TODO"):
+            # Guardamos en el CSV
+            nuevo = {
+                "nombre": nom.upper(), "cedula": ced, "ficha": fic, 
+                "programa": prog.upper(), "radicado": rad, 
+                "novedad": nov, "periodo": periodo_actual
+            }
             pd.DataFrame([nuevo]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
             
-            st.success("✅ Guardado.")
-            limpiar_todo() # Vaciamos la memoria
-            st.session_state["nombre_archivo_actual"] = "" # Forzamos que el siguiente sea "nuevo"
-            st.rerun()
+            # --- AQUÍ OCURRE LA MAGIA ---
+            st.success("✅ Guardado exitosamente.")
+            
+            # Al aumentar el form_id, todas las keys (nom_0, ced_0...) mueren 
+            # y nacen nuevas (nom_1, ced_1...), por lo tanto, quedan VACÍAS.
+            st.session_state.form_id += 1 
+            if "datos_temp" in st.session_state:
+                del st.session_state.datos_temp
+            
+            st.rerun() # Refresca la pantalla inmediatamente
 
         if c2.button("🖨️ GENERAR CARTA"):
-            # Tu lógica de Word aquí (puedes usar la que ya tenías)
+            # Tu código de Word que ya funciona
             st.info("Generando documento...")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
@@ -265,6 +259,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
