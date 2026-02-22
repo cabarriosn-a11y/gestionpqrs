@@ -171,7 +171,7 @@ else:
             df = pd.read_csv(ARCHIVO_DATOS, on_bad_lines='skip', sep=',', engine='python', encoding='utf-8-sig')
             st.table(df) # Muestra los datos en la app
             # --- COPIAR DESDE AQUÍ ---
-            with st.expander("🗑️ ¿Te equivocaste? Borrar un registro específico"):
+        with st.expander("🗑️ ¿Te equivocaste? Borrar un registro específico"):
             st.warning("Cuidado: Esta acción eliminará el registro permanentemente de la base de datos.")
             
             # Usamos el 'df' que cargaste en la línea de arriba
@@ -228,5 +228,6 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
