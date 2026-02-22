@@ -100,36 +100,92 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
 # ==========================================
 if menu == "1. Retiros Voluntarios (Base de Datos)":
     st.header("📄 Procesamiento de Retiros Voluntarios")
-    archivo = st.file_uploader("Subir formulario de retiro", type=["tif", "png", "jpg"])
+    
+    # Usamos un key para que el uploader también se pueda resetear
+    archivo = st.file_uploader("Subir formulario de retiro", type=["tif", "png", "jpg"], key="uploader_retiro")
     
     if archivo:
-        img = Image.open(archivo); d_ocr = extraer_datos(img)
+        # Solo ejecutamos OCR si no tenemos los datos en sesión (para no borrar lo que edites manualmente)
+        if "datos_ocr" not in st.session_state:
+            img = Image.open(archivo)
+            st.session_state["datos_ocr"] = extraer_datos(img)
+
+        d_ocr = st.session_state["datos_ocr"]
+
         col1, col2 = st.columns(2)
         with col1:
-            nom = st.text_input("Nombre Aprendiz", value=d_ocr["nombre"])
-            ced = st.text_input("Cédula", value=d_ocr["cedula"])
-            fic = st.text_input("Ficha", value=d_ocr["ficha"])
+            nom = st.text_input("Nombre Aprendiz", value=d_ocr["nombre"], key="nombre_input")
+            ced = st.text_input("Cédula", value=d_ocr["cedula"], key="cedula_input")
+            fic = st.text_input("Ficha", value=d_ocr["ficha"], key="ficha_input")
         with col2:
-            rad = st.text_input("Radicado", value=d_ocr["radicado"])
-            prog = st.text_input("Programa")
+            rad = st.text_input("Radicado", value=d_ocr["radicado"], key="radicado_input")
+            prog = st.text_input("Programa", key="programa_input")
             nov = "Retiro Voluntario"
 
         c1, c2 = st.columns(2)
+        
+        # --- BOTÓN GUARDAR ---
         if c1.button("💾 GUARDAR EN LISTA"):
-            pd.DataFrame([{"nombre": nom.upper(), "cedula": ced, "ficha": fic, "programa": prog.upper(), "radicado": rad, "novedad": nov}]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
+            # Guardamos con 'periodo' para que aparezca en la Sesión 3 (Actas)
+            nuevo_dato = {
+                "nombre": nom.upper(), 
+                "cedula": ced, 
+                "ficha": fic, 
+                "programa": prog.upper(), 
+                "radicado": rad, 
+                "novedad": nov,
+                "periodo": periodo_actual # MUY IMPORTANTE para el acta mensual
+            }
+            
+            pd.DataFrame([nuevo_dato]).to_csv(
+                ARCHIVO_DATOS, 
+                mode='a', 
+                header=not os.path.exists(ARCHIVO_DATOS), 
+                index=False, 
+                encoding='utf-8-sig'
+            )
+            
             st.success("✅ Guardado para el acta mensual.")
-        # >>> AQUÍ PEGAS EL CÓDIGO DE LIMPIEZA <<<
-        for key in ["nombre_input", "cedula_input", "ficha_input", "radicado_input"]:
-            if key in st.session_state:
-                del st.session_state[key]
-    
-        # El st.rerun() hace que la página se refresque y los campos queden limpios
-        st.rerun()
-        if c2.button("🖨️ GENERAR CARTA DE RETIRO"):
-            doc = DocxTemplate("Plantilla_PQRS.docx")
-            doc.render({**ctx, "NOMBRE": nom, "CEDULA": ced, "FICHA": fic, "PROGRAMA": prog, "RADICADO": rad, "CUERPO": "Se tramita retiro voluntario según solicitud oficial."})
-            b = io.BytesIO(); doc.save(b); st.download_button("📥 Descargar Carta", b.getvalue(), f"Retiro_{ced}.docx")
+            
+            # >>> LIMPIEZA DE SESIÓN (Solo ocurre tras guardar) <<<
+            for key in ["nombre_input", "cedula_input", "ficha_input", "radicado_input", "programa_input", "datos_ocr"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            
+            st.rerun() # Refresca la app y limpia los campos
 
+        # --- BOTÓN GENERAR CARTA ---
+        if c2.button("🖨️ GENERAR CARTA DE RETIRO"):
+            try:
+                doc = DocxTemplate("Plantilla_PQRS.docx")
+                contexto_word = {
+                    **ctx, 
+                    "NOMBRE": nom, 
+                    "CEDULA": ced, 
+                    "FICHA": fic, 
+                    "PROGRAMA": prog, 
+                    "RADICADO": rad, 
+                    "CUERPO": "Se tramita retiro voluntario según solicitud oficial."
+                }
+                doc.render(contexto_word)
+                
+                # Guardamos en un buffer para que el botón de descarga funcione bien
+                b = io.BytesIO()
+                doc.save(b)
+                st.session_state["archivo_word"] = b.getvalue()
+                st.session_state["nombre_archivo"] = f"Retiro_{ced}.docx"
+                st.info("Documento listo para descargar abajo ↓")
+            except Exception as e:
+                st.error(f"Error al generar Word: {e}")
+
+        # Aparece el botón de descarga solo si ya se generó el archivo
+        if "archivo_word" in st.session_state:
+            st.download_button(
+                label="📥 Descargar Carta",
+                data=st.session_state["archivo_word"],
+                file_name=st.session_state["nombre_archivo"],
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -228,6 +284,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
