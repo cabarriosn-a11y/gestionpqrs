@@ -29,22 +29,21 @@ else:
 # --- FUNCIONES DE INTELIGENCIA ---
 
 def redactar_con_ia(prompt_usuario):
+    """Genera respuesta usando el modelo disponible en 2026"""
     try:
-        # 1. Intentamos listar los modelos disponibles para ver qué "puerta" está abierta
-        disponibles = [m.name for m in genai.list_models()]
-        st.write(f"DEBUG - Modelos que ve tu llave: {disponibles}") # Esto saldrá en tu pantalla
+        # Usamos el modelo 2.5-flash que apareció en tu diagnóstico
+        model = genai.GenerativeModel('gemini-2.5-flash') 
         
-        # 2. Forzamos el uso del modelo que aparezca en la lista o el más estándar
-        model_name = 'gemini-1.5-flash'
-        if 'models/gemini-1.5-flash' not in disponibles:
-            model_name = 'gemini-pro' # Si no ve el flash, usa el pro viejo
-            
-        model = genai.GenerativeModel(model_name)
-        contexto = "Eres un experto administrativo del SENA. Redacta de forma formal: "
+        contexto = (
+            "Eres un experto administrativo del SENA Regional Guajira. "
+            "Redacta una respuesta formal, cordial y técnica. "
+            "La situación a responder es: "
+        )
+        
         response = model.generate_content(contexto + prompt_usuario)
         return response.text
     except Exception as e:
-        return f"Error de diagnóstico: {e}. Revisa si tu llave de API está activa en Google AI Studio."
+        return f"Error con Gemini 2.5: {e}. Intenta usar 'gemini-2.0-flash' si persiste."
 
 @st.cache_data(show_spinner=False)
 def extraer_datos(_img):
@@ -175,6 +174,7 @@ else:
                 os.remove(ARCHIVO_DATOS); st.rerun()
     else:
         st.warning("No hay registros de retiros.")
+
 
 
 
