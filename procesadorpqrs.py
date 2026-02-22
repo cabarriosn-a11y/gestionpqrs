@@ -46,37 +46,35 @@ def redactar_con_ia(prompt_usuario):
         return f"Error con Gemini 2.5: {e}. Intenta usar 'gemini-2.0-flash' si persiste."
 
 @st.cache_data(show_spinner=False)
-def extraer_datos(_img):
-    """OCR inteligente para Portal PQRS y Oficina Virtual"""
-    texto = pytesseract.image_to_string(_img, lang='eng')
-    d = {"nombre": "", "cedula": "", "ficha": "", "programa": "", "radicado": "", "nis": "", "correo": "", "telefono": ""}
-    
-    # Radicado, NIS, Correo, Cédula
-    m_rad = re.search(r'(\d-\d{4}-\d+)', texto); d["radicado"] = m_rad.group(1) if m_rad else ""
-    m_nis = re.search(r'(\d{4}-\d{2}-\d+)', texto); d["nis"] = m_nis.group(1) if m_nis else ""
-    m_cor = re.search(r'([a-zA-Z0-9._%+-]+\s?[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', texto)
-    if m_cor: d["correo"] = m_cor.group(1).replace(" ", "").upper()
-    m_ced = re.search(r'(?:Identificaci|Documento|No\.\s*de)[^\d]*(\d{7,10})', texto, re.IGNORECASE)
-    if m_ced: d["cedula"] = m_ced.group(1)
+def extraer_datos_multiformato(img):
+    # Esta función es el cerebro que identifica si es PQRS o Oficina Virtual
+    texto = pytesseract.image_to_string(img, lang='spa')
+    datos = {"nombre": "", "cedula": "", "ficha": "", "radicado": "", "nis": "", "email": ""}
 
-    # Lógica de Nombre Multi-Formato
-    lineas = [l.strip() for l in texto.split('\n') if len(l.strip()) > 2]
-    n_ov, a_ov = "", ""
-    for i, l in enumerate(lineas):
-        if "Nombres" == l.strip() and i+1 < len(lineas): n_ov = lineas[i+1]
-        if "Apellidos" == l.strip() and i+1 < len(lineas): a_ov = lineas[i+1]
-        if "Nombre Persona" in l and i+1 < len(lineas): d["nombre"] = lineas[i+1]
-    if n_ov and a_ov: d["nombre"] = f"{n_ov} {a_ov}"
-    
-    # Limpieza de ruidos (Barrio, Cargo, etc.)
-    d["nombre"] = re.sub(r'SAN\s*ANTONIO|BARRIO|MUNICIPIO|MIRANDA|CAUCA|CORREO|TELEFONO', '', d["nombre"], flags=re.IGNORECASE).strip()
-    d["nombre"] = re.sub(r'[^a-zA-Z\s]', '', d["nombre"]).strip()
+    # Buscador de Radicado y NIS (Común en ambos formatos)
+    rad_match = re.search(r"(?:No\.\s*)?Radicado\s*\n?([\d-]+)", texto, re.IGNORECASE)
+    if rad_match: datos["radicado"] = rad_match.group(1).strip()
 
-    # Ficha
-    m_fic = re.search(r'(?:Ficha|Curso)\s*\D*(\d{7,10})', texto, re.IGNORECASE)
-    d["ficha"] = m_fic.group(1) if m_fic else ""
-    
-    return d
+    nis_match = re.search(r"N\.?I\.?S\s*\n?([\d-]+)", texto, re.IGNORECASE)
+    if nis_match: datos["nis"] = nis_match.group(1).strip()
+
+    # Buscador de Nombre (Detecta etiquetas de Oficina Virtual y Portal PQRS)
+    nombres = re.search(r"Nombres\s*\n+(.*)", texto, re.IGNORECASE)
+    apellidos = re.search(r"Apellidos\s*\n+(.*)", texto, re.IGNORECASE)
+    if nombres and apellidos:
+        datos["nombre"] = f"{nombres.group(1).strip()} {apellidos.group(1).strip()}".upper()
+    else:
+        nom_persona = re.search(r"Nombre Persona\s*\n+(.*)", texto, re.IGNORECASE)
+        if nom_persona: datos["nombre"] = nom_persona.group(1).strip().upper()
+
+    # Buscador de Cédula y Ficha
+    ced_match = re.search(r"(?:No\.\s*de\s*)?Identificación\s*\n?(\d+)", texto, re.IGNORECASE)
+    if ced_match: datos["cedula"] = ced_match.group(1).strip()
+
+    fic_match = re.search(r"(?:No\.\s*)?Ficha\s*(?:de\s*Curso)?\s*\n?(\d+)", texto, re.IGNORECASE)
+    if fic_match: datos["ficha"] = fic_match.group(1).strip()
+
+    return datos
 
 # --- INTERFAZ STREAMLIT ---
 st.set_page_config(page_title=f"SENA Guajira v{VERSION}", layout="wide")
@@ -106,79 +104,49 @@ meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
 fecha_actual = datetime.now()
 periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
 if menu == "1. Retiros Voluntarios (Base de Datos)":
-    st.header("📄 Procesamiento de Retiros Voluntarios")
+    st.header("📄 Procesamiento de Formularios SENA")
 
-    # 1. Inicialización de estados críticos
-    if 'reset_n' not in st.session_state: st.session_state.reset_n = 0
-    if 'datos_ocr' not in st.session_state: st.session_state.datos_ocr = {}
-    if 'archivo_anterior' not in st.session_state: st.session_state.archivo_anterior = None
-
-    # 2. Cargador con llave dinámica (se limpia al guardar)
-    archivo = st.file_uploader("Subir formulario", type=["tif", "png", "jpg"], key=f"up_{st.session_state.reset_n}")
-
-    # 3. LÓGICA DE DETECCIÓN Y PROCESAMIENTO
-    if archivo:
-        # Si el nombre del archivo cambió, procesamos OCR de inmediato
-        if st.session_state.archivo_anterior != archivo.name:
-            with st.spinner("🤖 IA Leyendo documento..."):
-                try:
-                    img = Image.open(archivo)
-                    # Llamamos a tu función de extracción
-                    resultado = extraer_datos(img)
-                    
-                    # Guardamos en la sesión y marcamos el archivo como procesado
-                    st.session_state.datos_ocr = resultado
-                    st.session_state.archivo_anterior = archivo.name
-                    st.rerun() # RECARGA para inyectar los datos en los inputs
-                except Exception as e:
-                    st.error(f"Error al leer la imagen: {e}")
-    else:
-        # Si no hay archivo, nos aseguramos que la memoria esté lista para el próximo
-        if st.session_state.datos_ocr != {}:
-            st.session_state.datos_ocr = {}
-            st.session_state.archivo_anterior = None
-
-    # 4. FORMULARIO (Fuente de verdad única: st.session_state.datos_ocr)
-    d = st.session_state.datos_ocr
-    v = st.session_state.reset_n
-
-    col1, col2 = st.columns(2)
-    with col1:
-        # El 'value' se alimenta directamente de lo que la IA extrajo
-        nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"n_{v}")
-        ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"c_{v}")
-        fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"f_{v}")
-    with col2:
-        rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"r_{v}")
-        prog = st.text_input("Programa", value=d.get("programa", ""), key=f"p_{v}")
-        nov = "Retiro Voluntario"
-
-    # 5. BOTONES
-    c1, c2 = st.columns(2)
+    # Mantenemos un contador para limpiar las casillas al guardar
+    if 'v_form' not in st.session_state: st.session_state.v_form = 0
     
-    if c1.button("💾 GUARDAR Y LIMPIAR TODO"):
-        if nom and ced:
-            # Guardar en CSV
-            nuevo = {
-                "nombre": nom.upper(), "cedula": ced, "ficha": fic, 
-                "programa": prog.upper(), "radicado": rad, 
-                "novedad": nov, "periodo": periodo_actual
-            }
+    # Cargador de archivos con llave dinámica
+    archivo = st.file_uploader("Subir Formulario", type=["tif", "png", "jpg"], key=f"u_{st.session_state.v_form}")
+
+    if archivo:
+        # Detectamos si es un archivo nuevo para activar el OCR
+        if "id_archivo" not in st.session_state or st.session_state.id_archivo != archivo.name:
+            with st.spinner("🤖 IA Identificando formato y extrayendo datos..."):
+                img = Image.open(archivo)
+                st.session_state.data_ocr = extraer_datos_multiformato(img) # Llamamos a la función de arriba
+                st.session_state.id_archivo = archivo.name
+                st.rerun() # Esto obliga a las casillas a llenarse de inmediato
+
+        d = st.session_state.get("data_ocr", {})
+        v = st.session_state.v_form
+
+        # --- FORMULARIO AUTOMÁTICO ---
+        # Aquí es donde la magia ocurre: los 'value' se llenan con lo que leyó la IA
+        col1, col2 = st.columns(2)
+        with col1:
+            nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"n_{v}")
+            ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"c_{v}")
+            fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"f_{v}")
+        with col2:
+            rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"r_{v}")
+            nis = st.text_input("NIS", value=d.get("nis", ""), key=f"i_{v}")
+            prog = st.text_input("Programa de Formación", key=f"p_{v}")
+
+        # --- BOTÓN GUARDAR ---
+        if st.button("💾 GUARDAR Y LIMPIAR TODO"):
+            # Lógica para guardar en tu base de datos CSV
+            nuevo = {"nombre": nom, "cedula": ced, "ficha": fic, "radicado": rad, "periodo": periodo_actual}
             pd.DataFrame([nuevo]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
             
-            st.success(f"✅ ¡{nom} guardado!")
-            
-            # RESET TOTAL: Cambiamos versión y borramos rastro del archivo
-            st.session_state.reset_n += 1 
-            st.session_state.datos_ocr = {}
-            st.session_state.archivo_anterior = None
+            st.success("✅ Datos guardados en la base de datos.")
+            st.session_state.v_form += 1 # Esto limpia el formulario para el siguiente aprendiz
+            st.session_state.data_ocr = {}
+            st.session_state.id_archivo = None
             st.rerun()
-        else:
-            st.warning("⚠️ El OCR no detectó datos. Por favor escanea de nuevo o escribe manualmente.")
-
-    if c2.button("🖨️ GENERAR CARTA"):
-        # Tu lógica de Word aquí
-        st.info("Generando carta...")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -277,6 +245,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
