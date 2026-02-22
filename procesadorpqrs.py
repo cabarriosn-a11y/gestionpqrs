@@ -174,14 +174,6 @@ else:
         with c1:
             if st.button("📝 GENERAR ACTA"):
                 doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
-                # Usamos la variable de diagnóstico aquí:
-                doc.render({**ctx, "lista_aprendices": datos_para_el_acta})
-                b = io.BytesIO(); doc.save(b)
-                st.download_button("Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("📝 GENERAR ACTA"):
-                doc = DocxTemplate("Plantilla_Acta_Mensual.docx")
                 doc.render({**ctx, "lista_aprendices": df.to_dict(orient='records')})
                 b = io.BytesIO(); doc.save(b); st.download_button("Descargar Acta", b.getvalue(), f"Acta_{ctx['MES']}.docx")
         with c2:
@@ -189,6 +181,7 @@ else:
                 os.remove(ARCHIVO_DATOS); st.rerun()
     else:
         st.warning("No hay registros de retiros.")
+
 
 
 
