@@ -163,7 +163,7 @@ else:
         st.header(f"📊 Acta de Retiros - {ctx['MES']}")
         if os.path.exists(ARCHIVO_DATOS):
             # Reemplazo seguro para la línea 165
-df = pd.read_csv(ARCHIVO_DATOS, on_bad_lines='skip', sep=',', engine='python', encoding='utf-8-sig')
+            df = pd.read_csv(ARCHIVO_DATOS, on_bad_lines='skip', sep=',', engine='python', encoding='utf-8-sig')
             st.table(df) # Muestra los datos actuales en la app
             
             # Creamos dos columnas para los botones
@@ -207,6 +207,7 @@ df = pd.read_csv(ARCHIVO_DATOS, on_bad_lines='skip', sep=',', engine='python', e
                     st.rerun() # Refresca la app para mostrar que ya no hay datos
         else:
             st.warning("No hay registros para este mes.")
+
 
 
 
