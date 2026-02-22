@@ -173,7 +173,7 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
 
         if "archivo_word" in st.session_state:
             st.download_button("📥 Descargar Carta", st.session_state["archivo_word"], f"Retiro_{ced}.docx")
-            )
+            
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -272,6 +272,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
