@@ -1,4 +1,5 @@
 tesseract-ocr
 tesseract-ocr-esp
+libtesseract-dev
 
 
