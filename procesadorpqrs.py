@@ -29,16 +29,22 @@ else:
 # --- FUNCIONES DE INTELIGENCIA ---
 
 def redactar_con_ia(prompt_usuario):
-    """Genera una respuesta formal usando el modelo más compatible de 2026"""
     try:
-        # Usamos el modelo 1.5-flash que es el estándar actual
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        # 1. Intentamos listar los modelos disponibles para ver qué "puerta" está abierta
+        disponibles = [m.name for m in genai.list_models()]
+        st.write(f"DEBUG - Modelos que ve tu llave: {disponibles}") # Esto saldrá en tu pantalla
+        
+        # 2. Forzamos el uso del modelo que aparezca en la lista o el más estándar
+        model_name = 'gemini-1.5-flash'
+        if 'models/gemini-1.5-flash' not in disponibles:
+            model_name = 'gemini-pro' # Si no ve el flash, usa el pro viejo
+            
+        model = genai.GenerativeModel(model_name)
         contexto = "Eres un experto administrativo del SENA. Redacta de forma formal: "
         response = model.generate_content(contexto + prompt_usuario)
         return response.text
     except Exception as e:
-        # Si hay un error de 'not found', es por la versión de la API
-        return f"Error técnico: {e}. Intenta reiniciar la app en Streamlit Cloud."
+        return f"Error de diagnóstico: {e}. Revisa si tu llave de API está activa en Google AI Studio."
 
 @st.cache_data(show_spinner=False)
 def extraer_datos(_img):
@@ -169,6 +175,7 @@ else:
                 os.remove(ARCHIVO_DATOS); st.rerun()
     else:
         st.warning("No hay registros de retiros.")
+
 
 
 
