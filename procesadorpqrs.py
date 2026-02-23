@@ -23,71 +23,100 @@ if "GEMINI_API_KEY" in st.secrets:
 else:
     st.sidebar.error("❌ Falta GEMINI_API_KEY en Secrets.")
 
-# COMENTAR ESTA LÍNEA PARA PRODUCCIÓN EN LA NUBE
-def extraer_con_document_ai(archivo_bytes):
-    try:
-        client = documentai.DocumentProcessorServiceClient.from_service_account_info(
-            st.secrets["gcp_service_account"]
+import streamlit as st
+from docxtpl import DocxTemplate
+import io
+
+# --- CONFIGURACIÓN DE LA INTERFAZ ---
+st.title("📄 Generador de PQRS - SENA")
+st.markdown("Complete los campos para generar el documento oficial.")
+
+# --- 1. LÓGICA AUTOMÁTICA DEL ACTA POR MES ---
+meses_lista = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+]
+
+col_mes, col_vacia = st.columns([1, 2])
+with col_mes:
+    mes = st.selectbox("Seleccione el Mes de la PQRS", meses_lista)
+    # El número de acta es la posición en la lista + 1
+    acta_num = meses_lista.index(mes) + 1
+    st.info(f"📅 Acta Número: **{acta_num}**")
+
+# --- 2. CASILLAS PARA DIGITAR (9 CAMPOS) ---
+st.markdown("### ✍️ Datos del Aprendiz / Solicitante")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    nom = st.text_input("Nombres y Apellidos")
+    doc = st.text_input("Número de Documento")
+    rad = st.text_input("Número de Radicado")
+
+with col2:
+    nis = st.text_input("NIS")
+    fic = st.text_input("Ficha")
+    pro = st.text_input("Programa de Formación")
+
+with col3:
+    correo = st.text_input("Correo Electrónico")
+    tel = st.text_input("Teléfono de Contacto")
+    st.text_input("Número de Acta (Auto)", value=acta_num, disabled=True)
+
+# --- 3. PROCESAMIENTO DEL WORD ---
+# Preparamos los datos para la plantilla
+contexto = {
+    "nombre": nom,
+    "cedula": doc,
+    "radicado": rad,
+    "nis": nis,
+    "ficha": fic,
+    "programa": pro,
+    "correo": correo,
+    "telefono": tel,
+    "acta": acta_num,
+    "mes": mes
+}
+
+st.markdown("---")
+
+try:
+    # Cargamos tu plantilla oficial
+    doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
+    doc_tpl.render(contexto)
+
+    # Creamos el archivo en memoria
+    buffer = io.BytesIO()
+    doc_tpl.save(buffer)
+    buffer.seek(0)
+
+    # Botones de acción
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.download_button(
+            label="📥 Generar y Descargar Word",
+            data=buffer,
+            file_name=f"PQRS_{doc}_Acta_{acta_num}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
-        proyecto_id = st.secrets["gcp_service_account"]["project_id"]
-        procesador_id = "24ff861fd38e6fa5"
-        name = f"projects/{proyecto_id}/locations/us/processors/{procesador_id}"
+    
+    with c2:
+        if st.button("💾 Registrar en Base de Datos"):
+            if nom and doc:
+                st.success(f"¡Datos de {nom} listos para el Acta {acta_num}!")
+            else:
+                st.warning("Por favor, ingrese al menos Nombre y Documento.")
 
-        raw_document = documentai.RawDocument(content=archivo_bytes, mime_type="image/tiff")
-        request = documentai.ProcessRequest(name=name, raw_document=raw_document)
-        
-        result = client.process_document(request=request)
-        document = result.document
+except Exception as e:
+    st.error(f"⚠️ Error: No se pudo encontrar el archivo 'Plantilla.PQRS..docx' en la carpeta.")
 
-        # 1. Agregamos "programa" al diccionario inicial
-        datos = {
-            "nombre": "", 
-            "cedula": "", 
-            "ficha": "", 
-            "radicado": "", 
-            "nis": "", 
-            "programa": ""
-        }
-
-        for page in document.pages:
-            for field in page.form_fields:
-                # Convertimos a minúsculas para que la búsqueda sea infalible
-                k = field.field_name.text_anchor.content.strip().lower().replace("\n", " ")
-                v = field.field_value.text_anchor.content.strip().replace("\n", " ")
-
-                # --- REGLAS SEGÚN TUS 2 FORMATOS ---
-
-                # 1. Nombres y Apellidos (Evita capturar nombres de Centros o Empresas)
-                if "nombre" in k or "aprendiz" in k:
-                    if not any(excluir in k for excluir in ["centro", "municipio", "empresa", "programa", "instructor"]):
-                        datos["nombre"] = v.upper()
-
-                # 2. Número de Documento
-                elif any(x in k for x in ["cédula", "identificación", "cc", "documento", "nº id"]):
-                    datos["cedula"] = v
-
-                # 3. Radicado
-                elif "radicado" in k or "no. radicado" in k:
-                    datos["radicado"] = v
-
-                # 4. NIS
-                elif "nis" in k or "n.i.s" in k:
-                    datos["nis"] = v
-
-                # 5. Ficha
-                elif "ficha" in k or "no. ficha" in k or "código" in k:
-                    datos["ficha"] = v
-
-                # 6. Programa de Formación
-                elif "programa" in k or "formación" in k:
-                    if any(x in k for x in ["nombre", "denominación"]):
-                        datos["programa"] = v
-
-        return datos
-    except Exception as e:
-        st.error(f"Error con Google: {e}")
-        return {}
-
+# --- 4. HISTORIAL (Solo si no es Retiro Voluntario) ---
+# Si tienes la variable 'menu' definida en tu sidebar, úsala aquí:
+if 'menu' in locals() and menu != "RETIROS VOLUNTARIOS":
+    st.markdown("---")
+    st.subheader("📊 Historial de Registros")
+    # Aquí puedes poner tu tabla de datos
 # --- FUNCIONES DE INTELIGENCIA ---
 
 def redactar_con_ia(prompt_usuario):
@@ -363,6 +392,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
