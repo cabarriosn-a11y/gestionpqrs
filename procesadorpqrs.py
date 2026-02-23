@@ -103,7 +103,7 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
 
     try:
         # Se asume que el archivo tiene este nombre exacto en tu repo
-        doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
+        doc_tpl = DocxTemplate("Plantilla_PQRS.docx") 
         doc_tpl.render(contexto)
 
         buffer = io.BytesIO()
@@ -129,7 +129,7 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
                     st.warning("Por favor, ingrese Nombre y Documento.")
 
     except Exception as e:
-        st.error(f"⚠️ Error: No se pudo encontrar 'Plantilla.PQRS..docx' o falta la librería docxtpl.")
+        st.error(f"⚠️ Error: No se pudo encontrar 'Plantilla_PQRS.docx' o falta la librería docxtpl.")
 
 # ==========================================
 # OPCIÓN 2: REDACTOR IA
@@ -214,3 +214,4 @@ else:
                 st.error(f"Error técnico: {e}")
     else:
         st.info("No hay base de datos local aún.")
+
