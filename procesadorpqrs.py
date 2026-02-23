@@ -227,8 +227,7 @@ if archivo:
         Ficha: {fic}
         Programa de Formación: {pro}
         ----------------------
-        Generado automáticamente por Gestión PQRS
-        """
+        Generado automáticamente por Gestión PQRS"""
 
        # 2. Creamos dos columnas para los botones de acción
        col_btn1, col_btn2 = st.columns(2)
@@ -345,6 +344,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
