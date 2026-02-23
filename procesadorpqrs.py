@@ -47,11 +47,35 @@ def extraer_con_document_ai(archivo_bytes):
                 v = field.field_value.text_anchor.content.strip().replace("\n", " ")
 
                 # Mapeo para tus PQRS
-                if "Nombre" in k or "Aprendiz" in k: datos["nombre"] = v.upper()
-                if "Identificación" in k or "Cédula" in k: datos["cedula"] = v
-                if "Ficha" in k: datos["ficha"] = v
-                if "Radicado" in k: datos["radicado"] = v
-                if "N.I.S" in k or "NIS" in k: datos["nis"] = v
+                i# --- REGLAS SEGÚN TUS 2 FORMATOS ---
+
+                # 1. Nombres y Apellidos
+                # Filtramos para que no tome 'Nombre del centro' o 'Nombre de la empresa'
+                if "nombre" in k or "aprendiz" in k:
+                    if not any(excluir in k for excluir in ["centro", "municipio", "empresa", "programa", "instructor"]):
+                        datos["nombre"] = v.upper()
+
+                # 2. Número de Documento
+                if any(x in k for x in ["cédula", "identificación", "cc", "documento", "nº id"]):
+                    datos["cedula"] = v
+
+                # 3. Radicado (Clave en tus PQRS)
+                if "radicado" in k or "no. radicado" in k:
+                    datos["radicado"] = v
+
+                # 4. NIS
+                if "nis" in k or "n.i.s" in k:
+                    datos["nis"] = v
+
+                # 5. Ficha
+                if "ficha" in k or "no. ficha" in k or "código" in k:
+                    # A veces la ficha viene pegada al programa, extraemos solo números si es necesario
+                    datos["ficha"] = v
+
+                # 6. Programa de Formación
+                if "programa" in k or "formación" in k:
+                    if "nombre" in k or "denominación" in k:
+                        datos["programa"] = v
         return datos
     except Exception as e:
         st.error(f"Error con Google: {e}")
@@ -283,6 +307,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
