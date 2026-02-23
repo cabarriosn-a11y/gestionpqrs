@@ -39,43 +39,50 @@ def extraer_con_document_ai(archivo_bytes):
         result = client.process_document(request=request)
         document = result.document
 
-        datos = {"nombre": "", "cedula": "", "ficha": "", "radicado": "", "nis": ""}
+        # 1. Agregamos "programa" al diccionario inicial
+        datos = {
+            "nombre": "", 
+            "cedula": "", 
+            "ficha": "", 
+            "radicado": "", 
+            "nis": "", 
+            "programa": ""
+        }
 
         for page in document.pages:
             for field in page.form_fields:
-                k = field.field_name.text_anchor.content.strip().replace("\n", " ")
+                # Convertimos a minúsculas para que la búsqueda sea infalible
+                k = field.field_name.text_anchor.content.strip().lower().replace("\n", " ")
                 v = field.field_value.text_anchor.content.strip().replace("\n", " ")
 
-                # Mapeo para tus PQRS
-                i# --- REGLAS SEGÚN TUS 2 FORMATOS ---
+                # --- REGLAS SEGÚN TUS 2 FORMATOS ---
 
-                # 1. Nombres y Apellidos
-                # Filtramos para que no tome 'Nombre del centro' o 'Nombre de la empresa'
+                # 1. Nombres y Apellidos (Evita capturar nombres de Centros o Empresas)
                 if "nombre" in k or "aprendiz" in k:
                     if not any(excluir in k for excluir in ["centro", "municipio", "empresa", "programa", "instructor"]):
                         datos["nombre"] = v.upper()
 
                 # 2. Número de Documento
-                if any(x in k for x in ["cédula", "identificación", "cc", "documento", "nº id"]):
+                elif any(x in k for x in ["cédula", "identificación", "cc", "documento", "nº id"]):
                     datos["cedula"] = v
 
-                # 3. Radicado (Clave en tus PQRS)
-                if "radicado" in k or "no. radicado" in k:
+                # 3. Radicado
+                elif "radicado" in k or "no. radicado" in k:
                     datos["radicado"] = v
 
                 # 4. NIS
-                if "nis" in k or "n.i.s" in k:
+                elif "nis" in k or "n.i.s" in k:
                     datos["nis"] = v
 
                 # 5. Ficha
-                if "ficha" in k or "no. ficha" in k or "código" in k:
-                    # A veces la ficha viene pegada al programa, extraemos solo números si es necesario
+                elif "ficha" in k or "no. ficha" in k or "código" in k:
                     datos["ficha"] = v
 
                 # 6. Programa de Formación
-                if "programa" in k or "formación" in k:
-                    if "nombre" in k or "denominación" in k:
+                elif "programa" in k or "formación" in k:
+                    if any(x in k for x in ["nombre", "denominación"]):
                         datos["programa"] = v
+
         return datos
     except Exception as e:
         st.error(f"Error con Google: {e}")
@@ -307,6 +314,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
