@@ -216,6 +216,39 @@ if archivo:
         if st.button("💾 Guardar Registro"):
             # Aquí pones tu lógica de guardar en Excel
             st.success(f"Registro de {nombre} guardado.")
+        # ... (aquí terminan tus col1 y col2 de los text_input)
+
+    # 1. Creamos el contenido del archivo que se va a descargar
+    contenido_descarga = f"""
+    REPORTE DE PQRS - SENA
+    ----------------------
+    Nombres y Apellidos: {nom}
+    Número de Documento: {doc}
+    Número de Radicado: {rad}
+    NIS: {nis}
+    Ficha: {fic}
+    Programa de Formación: {pro}
+    ----------------------
+    Generado automáticamente por Gestión PQRS
+    """
+
+    # 2. Creamos dos columnas para los botones de acción
+    col_btn1, col_btn2 = st.columns(2)
+
+    with col_btn1:
+        # Botón para descargar en formato .txt
+        st.download_button(
+            label="📥 Descargar PQRS (TXT)",
+            data=contenido_descarga,
+            file_name=f"PQRS_{doc}.txt",
+            mime="text/plain"
+        )
+
+    with col_btn2:
+        # Tu botón actual de Guardar
+        if st.button("💾 Registrar en Base de Datos"):
+            # Aquí va tu lógica de guardado en Excel/CSV
+            st.success(f"¡Datos de {nom} registrados exitosamente!")    
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -314,6 +347,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
