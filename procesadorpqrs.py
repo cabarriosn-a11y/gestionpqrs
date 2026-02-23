@@ -1,5 +1,5 @@
 import streamlit as st
-import pytesseract
+import 
 from PIL import Image
 import re
 from PIL import Image
@@ -8,6 +8,7 @@ import datetime
 import pandas as pd
 import os
 import google.generativeai as genai
+from google.cloud import documentai  # Esta es la nueva
 
 # ==========================================
 # ⚙️ CONFIGURACIÓN FINAL - SENA GUAJIRA
@@ -24,7 +25,38 @@ else:
     st.sidebar.error("❌ Falta GEMINI_API_KEY en Secrets.")
 
 # COMENTAR ESTA LÍNEA PARA PRODUCCIÓN EN LA NUBE
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+def extraer_con_document_ai(archivo_bytes):
+    try:
+        client = documentai.DocumentProcessorServiceClient.from_service_account_info(
+            st.secrets["gcp_service_account"]
+        )
+        proyecto_id = st.secrets["gcp_service_account"]["project_id"]
+        procesador_id = "25f15ad9a045fb0b"
+        name = f"projects/{proyecto_id}/locations/us/processors/{procesador_id}"
+
+        raw_document = documentai.RawDocument(content=archivo_bytes, mime_type="image/tiff")
+        request = documentai.ProcessRequest(name=name, raw_document=raw_document)
+        
+        result = client.process_document(request=request)
+        document = result.document
+
+        datos = {"nombre": "", "cedula": "", "ficha": "", "radicado": "", "nis": ""}
+
+        for page in document.pages:
+            for field in page.form_fields:
+                k = field.field_name.text_anchor.content.strip().replace("\n", " ")
+                v = field.field_value.text_anchor.content.strip().replace("\n", " ")
+
+                # Mapeo para tus PQRS
+                if "Nombre" in k or "Aprendiz" in k: datos["nombre"] = v.upper()
+                if "Identificación" in k or "Cédula" in k: datos["cedula"] = v
+                if "Ficha" in k: datos["ficha"] = v
+                if "Radicado" in k: datos["radicado"] = v
+                if "N.I.S" in k or "NIS" in k: datos["nis"] = v
+        return datos
+    except Exception as e:
+        st.error(f"Error con Google: {e}")
+        return {}
 
 # --- FUNCIONES DE INTELIGENCIA ---
 
@@ -312,6 +344,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
