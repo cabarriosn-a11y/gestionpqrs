@@ -215,7 +215,7 @@ if archivo:
 
         if st.button("💾 Guardar Registro"):
             # Aquí pones tu lógica de guardar en Excel
-            st.success(f"Registro de {nombre} guardado.")
+            st.success(f"Registro de {nom} guardado.")
         # ... (aquí terminan tus col1 y col2 de los text_input)
 
         # 1. Creamos el contenido del archivo que se va a descargar
@@ -345,6 +345,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
