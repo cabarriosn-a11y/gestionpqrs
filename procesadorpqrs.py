@@ -200,69 +200,71 @@ if archivo:
     if "data_ocr" in st.session_state:
         d = st.session_state.data_ocr
         
-        # --- 1. ORGANIZACIÓN DE LAS CASILLAS DE ENTRADA (9 CAMPOS + MES) ---
-st.markdown("### 📋 Validación de Datos")
-col1, col2, col3 = st.columns(3)
+        # --- 1. ORGANIZACIÓN DE LAS CASILLAS DE ENTRADA ---
+        st.markdown("### 📋 Validación de Datos")
+        col1, col2, col3 = st.columns(3)
 
-with col1:
-    nom = st.text_input("Nombres y Apellidos", value=d.get("nombre", ""))
-    doc = st.text_input("Número de Documento", value=d.get("cedula", ""))
-    rad = st.text_input("Número de Radicado", value=d.get("radicado", ""))
+        with col1:
+            nom = st.text_input("Nombres y Apellidos", value=d.get("nombre", ""))
+            doc = st.text_input("Número de Documento", value=d.get("cedula", ""))
+            rad = st.text_input("Número de Radicado", value=d.get("radicado", ""))
 
-with col2:
-    nis = st.text_input("NIS", value=d.get("nis", ""))
-    fic = st.text_input("Ficha", value=d.get("ficha", ""))
-    pro = st.text_input("Programa de Formación", value=d.get("programa", ""))
+        with col2:
+            nis = st.text_input("NIS", value=d.get("nis", ""))
+            fic = st.text_input("Ficha", value=d.get("ficha", ""))
+            pro = st.text_input("Programa de Formación", value=d.get("programa", ""))
 
-with col3:
-    correo = st.text_input("Correo Electrónico", value="")
-    tel = st.text_input("Teléfono de Contacto", value="")
-    acta = st.text_input("Número de Acta", value="")
+        with col3:
+            correo = st.text_input("Correo Electrónico", value="")
+            tel = st.text_input("Teléfono de Contacto", value="")
+            acta = st.text_input("Número de Acta", value="")
 
-mes = st.selectbox("Mes de Proceso", ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"])
+        mes = st.selectbox("Mes de Proceso", ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                                              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"])
 
-# --- 2. LÓGICA DE GENERACIÓN DEL WORD ---
-contexto = {
-    "nombre": nom,
-    "cedula": doc,
-    "radicado": rad,
-    "nis": nis,
-    "ficha": fic,
-    "programa": pro,
-    "correo": correo,
-    "telefono": tel,
-    "acta": acta,
-    "mes": mes
-}
+        # --- 2. LÓGICA DE GENERACIÓN DEL WORD ---
+        contexto = {
+            "nombre": nom,
+            "cedula": doc,
+            "radicado": rad,
+            "nis": nis,
+            "ficha": fic,
+            "programa": pro,
+            "correo": correo,
+            "telefono": tel,
+            "acta": acta,
+            "mes": mes
+        }
 
-try:
-    # Usamos el nombre exacto que me diste
-    doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
-    doc_tpl.render(contexto)
+        try:
+            # Usamos el nombre exacto de tu archivo
+            doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
+            doc_tpl.render(contexto)
 
-    buffer = io.BytesIO()
-    doc_tpl.save(buffer)
-    buffer.seek(0)
+            buffer = io.BytesIO()
+            doc_tpl.save(buffer)
+            buffer.seek(0)
 
-    st.markdown("---")
-    c1, c2 = st.columns(2)
-    
-    with c1:
-        st.download_button(
-            label="📥 Descargar Formato Word",
-            data=buffer,
-            file_name=f"PQRS_{doc}_Acta_{acta}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
-    
-    with c2:
-        if st.button("💾 Finalizar y Guardar"):
-            # Aquí conectaremos la base de datos después
-            st.success(f"¡Datos de {nom} preparados correctamente!")
+            st.markdown("---")
+            c1, c2 = st.columns(2)
+            
+            with c1:
+                st.download_button(
+                    label="📥 Descargar Formato Word",
+                    data=buffer,
+                    file_name=f"PQRS_{doc}_Acta_{acta}.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+            
+            with c2:
+                if st.button("💾 Finalizar y Guardar"):
+                    # Aquí conectaremos la base de datos después
+                    st.success(f"¡Datos de {nom} preparados correctamente!")
 
-    except Exception as e:
-       st.error(f"⚠️ No se encontró el archivo 'Plantilla.PQRS..docx'. Verifica el nombre en tu carpeta.")
+        except Exception as e:
+            st.error(f"⚠️ Error con el Word: {e}")
+
+# --- FIN DE LA SECCIÓN 1 ---
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -361,6 +363,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
