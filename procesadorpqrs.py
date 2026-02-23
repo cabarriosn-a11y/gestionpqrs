@@ -211,8 +211,7 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
 # ==========================================
   # --- 1. CONFIGURACIÓN DE FECHA Y ACTA AUTOMÁTICA ---
         # (Esto detecta el mes real hoy: febrero = Acta 2)
-   nombres_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        nombres_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
         
         fecha_actual = datetime.now()
         mes_actual = nombres_meses[fecha_actual.month - 1]
@@ -380,6 +379,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
