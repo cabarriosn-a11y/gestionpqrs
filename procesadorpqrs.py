@@ -209,22 +209,6 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
 # ==========================================
 # OPCIÓN 1: RETIROS
 # ==========================================
-# --- 1. Subida del archivo ---
-archivo = st.file_uploader("Subir Formulario", type=["tif", "png", "jpg"])
-
-if archivo:
-    # 2. PROCESAMIENTO (Solo si no lo hemos hecho ya para este archivo)
-    if "archivo_actual" not in st.session_state or st.session_state.archivo_actual != archivo.name:
-        with st.spinner("🤖 Analizando con Google Document AI..."):
-            img_bytes = archivo.getvalue()
-            datos = extraer_con_document_ai(img_bytes)
-            
-            if datos:
-                st.session_state.data_ocr = datos
-                st.session_state.archivo_actual = archivo.name
-            else:
-                st.error("No se pudieron extraer datos. Revisa la conexión.")
-
     # 3. MOSTRAR CASILLAS (Solo si ya tenemos datos en memoria)
     if "data_ocr" in st.session_state:
         d = st.session_state.data_ocr
@@ -392,6 +376,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
