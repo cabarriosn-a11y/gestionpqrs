@@ -170,17 +170,16 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
     # --- PASO 2: CARGADOR DE ARCHIVOS ---
     v = st.session_state.v_form # Ahora sí puedes usar 'v' porque ya existe arriba
     archivo = st.file_uploader("Subir Formulario", type=["tif", "png", "jpg"], key=f"u_{v}")
-
-    if archivo:
-        # Detectar si el archivo es nuevo
-        if st.session_state.archivo_id != archivo.name:
-            with st.spinner("🤖 IA extrayendo datos..."):
-                img = Image.open(archivo)
-                # Llamas a tu función de extracción multiformato
-                # Ahora llamamos a la función de Google
-                st.session_state.data_ocr = extraer_con_document_ai(img_bytes) 
-                st.session_state.archivo_id = archivo.name
-                st.rerun() # Refresca para que los datos caigan en las casillas
+    
+    if archivo is not None:
+    # 1. AQUÍ DEFINIMOS img_bytes leyendo el archivo que subió el usuario
+    img_bytes = archivo.read() 
+    
+    # 2. Ahora sí podemos llamar a la función sin que de error de nombre
+    if "data_ocr" not in st.session_state:
+        with st.spinner("🤖 Analizando con Google Document AI..."):
+            st.session_state.data_ocr = extraer_con_document_ai(img_bytes)
+            st.rerun()
 
         # --- PASO 3: FORMULARIO ---
         d = st.session_state.data_ocr
@@ -333,6 +332,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
