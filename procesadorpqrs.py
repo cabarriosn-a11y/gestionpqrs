@@ -211,35 +211,33 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
 # ==========================================
   # --- 1. CONFIGURACIÓN DE FECHA Y ACTA AUTOMÁTICA ---
         # (Esto detecta el mes real hoy: febrero = Acta 2)
-        nombres_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+
+nombres_meses: list[str] = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
         
-        fecha_actual = datetime.now()
-        mes_actual = nombres_meses[fecha_actual.month - 1]
-        acta_num = fecha_actual.month
+fecha_actual = datetime.now()
+mes_actual = nombres_meses[fecha_actual.month - 1]
+acta_num = fecha_actual.month
 
-        st.markdown(f"### 📋 Generación de Acta: {mes_actual} (No. {acta_num})")
+st.markdown(f"### 📋 Generación de Acta: {mes_actual} (No. {acta_num})")
 
-        # --- 2. CASILLAS VACÍAS PARA DIGITAR (9 CAMPOS) ---
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
+        # --- 2. CASILLAS VACÍAS PARA DIGITAR ---
+col1, col2, col3 = st.columns(3)
+with col1:
             nom = st.text_input("Nombres y Apellidos")
             doc = st.text_input("Número de Documento")
             rad = st.text_input("Número de Radicado")
 
-        with col2:
+with col2:
             nis = st.text_input("NIS")
             fic = st.text_input("Ficha")
             pro = st.text_input("Programa de Formación")
 
-        with col3:
+with col3:
             correo = st.text_input("Correo Electrónico")
             tel = st.text_input("Teléfono de Contacto")
-            # El acta se muestra automática y no se deja editar
             st.text_input("Número de Acta", value=acta_num, disabled=True)
-
         # --- 3. LÓGICA DE GENERACIÓN DEL WORD ---
-        contexto = {
+contexto = {
             "nombre": nom,
             "cedula": doc,
             "radicado": rad,
@@ -252,7 +250,7 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
             "mes": mes_actual
         }
 
-        try:
+try:
             # IMPORTANTE: El nombre del archivo debe ser exacto
             doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
             doc_tpl.render(contexto)
@@ -278,7 +276,7 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
                     st.cache_data.clear() 
                     st.success(f"✅ ¡Datos de {nom} preparados para el registro!")
 
-        except Exception as e:
+except Exception as e:
             st.error(f"⚠️ No se pudo procesar el Word: {e}")
 # --- FIN DE LA SECCIÓN 1 ---
 # ==========================================
@@ -379,6 +377,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
