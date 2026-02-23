@@ -149,91 +149,42 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
 # ==========================================
 # OPCIÓN 1: RETIROS
 # ==========================================
-from datetime import datetime
+# --- 1. Subida del archivo ---
+archivo = st.file_uploader("Subir Formulario", type=["tif", "png", "jpg"])
 
-# --- DEFINICIÓN DEL PERIODO (Pégalo arriba de los menús) ---
-meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-fecha_actual = datetime.now()
-periodo_actual = f"{meses_nombres[fecha_actual.month - 1]}-{fecha_actual.year}"
-if menu == "1. Retiros Voluntarios (Base de Datos)":
-    st.header("📄 Procesamiento de Formularios SENA")
-
-    # --- PASO 1: INICIALIZAR VARIABLES (Para evitar el AttributeError) ---
-    if 'v_form' not in st.session_state:
-        st.session_state.v_form = 0 # Aquí es donde nace la variable para que no dé error
-    if 'data_ocr' not in st.session_state:
-        st.session_state.data_ocr = {}
-    if 'archivo_id' not in st.session_state:
-        st.session_state.archivo_id = None
-
-    # --- PASO 2: CARGADOR DE ARCHIVOS ---
-    v = st.session_state.v_form # Ahora sí puedes usar 'v' porque ya existe arriba
-    archivo = st.file_uploader("Subir Formulario", type=["tif", "png", "jpg"], key=f"u_{v}")
-    
-    if archivo is not None:
-        # 1. AQUÍ DEFINIMOS img_bytes leyendo el archivo que subió el usuario
-        img_bytes = archivo.read() 
-    
-        # 2. Ahora sí podemos llamar a la función sin que de error de nombre
-    if "data_ocr" not in st.session_state:
+if archivo:
+    # 2. PROCESAMIENTO (Solo si no lo hemos hecho ya para este archivo)
+    if "archivo_actual" not in st.session_state or st.session_state.archivo_actual != archivo.name:
         with st.spinner("🤖 Analizando con Google Document AI..."):
-            st.session_state.data_ocr = extraer_con_document_ai(img_bytes)
-            st.rerun()
+            img_bytes = archivo.getvalue()
+            datos = extraer_con_document_ai(img_bytes)
+            
+            if datos:
+                st.session_state.data_ocr = datos
+                st.session_state.archivo_actual = archivo.name
+            else:
+                st.error("No se pudieron extraer datos. Revisa la conexión.")
 
-        # --- PASO 3: FORMULARIO ---
+    # 3. MOSTRAR CASILLAS (Solo si ya tenemos datos en memoria)
+    if "data_ocr" in st.session_state:
         d = st.session_state.data_ocr
         
+        st.markdown("### 📋 Datos Extraídos")
         col1, col2 = st.columns(2)
+        
         with col1:
-            nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"n_{v}")
-            ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"c_{v}")
-            fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"f_{v}")
+            nombre = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""))
+            cedula = st.text_input("Cédula", value=d.get("cedula", ""))
+            ficha = st.text_input("Ficha", value=d.get("ficha", ""))
+            
         with col2:
-            rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"r_{v}")
-            nis = st.text_input("NIS", value=d.get("nis", ""), key=f"i_{v}")
-            prog = st.text_input("Programa", key=f"p_{v}")
+            radicado = st.text_input("Número de Radicado", value=d.get("radicado", ""))
+            nis = st.text_input("N.I.S", value=d.get("nis", ""))
+            programa = st.text_input("Programa de Formación")
 
-        # --- PASO 4: BOTÓN GUARDAR Y LIMPIAR ---
-        if st.button("💾 GUARDAR Y LIMPIAR TODO"):
-            # Lógica para guardar en tu CSV (Recuerda definir periodo_actual)
-            nuevo = {"nombre": nom, "cedula": ced, "ficha": fic, "radicado": rad, "periodo": periodo_actual}
-            pd.DataFrame([nuevo]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
-            
-            st.success("✅ Datos guardados correctamente.")
-            
-            # LIMPIEZA TOTAL
-            st.session_state.v_form += 1 # Al cambiar la versión, las casillas quedan vacías
-            st.session_state.data_ocr = {}
-            st.session_state.archivo_id = None
-            st.rerun()
-
-        d = st.session_state.get("data_ocr", {})
-        v = st.session_state.v_form
-
-        # --- FORMULARIO AUTOMÁTICO ---
-        # Aquí es donde la magia ocurre: los 'value' se llenan con lo que leyó la IA
-        col1, col2 = st.columns(2)
-        with col1:
-            nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""), key=f"n_{v}")
-            ced = st.text_input("Cédula", value=d.get("cedula", ""), key=f"c_{v}")
-            fic = st.text_input("Ficha", value=d.get("ficha", ""), key=f"f_{v}")
-        with col2:
-            rad = st.text_input("Radicado", value=d.get("radicado", ""), key=f"r_{v}")
-            nis = st.text_input("NIS", value=d.get("nis", ""), key=f"i_{v}")
-            prog = st.text_input("Programa de Formación", key=f"p_{v}")
-
-        # --- BOTÓN GUARDAR ---
-        if st.button("💾 GUARDAR Y LIMPIAR TODO"):
-            # Lógica para guardar en tu base de datos CSV
-            nuevo = {"nombre": nom, "cedula": ced, "ficha": fic, "radicado": rad, "periodo": periodo_actual}
-            pd.DataFrame([nuevo]).to_csv(ARCHIVO_DATOS, mode='a', header=not os.path.exists(ARCHIVO_DATOS), index=False, encoding='utf-8-sig')
-            
-            st.success("✅ Datos guardados en la base de datos.")
-            st.session_state.v_form += 1 # Esto limpia el formulario para el siguiente aprendiz
-            st.session_state.data_ocr = {}
-            st.session_state.id_archivo = None
-            st.rerun()
+        if st.button("💾 Guardar Registro"):
+            # Aquí pones tu lógica de guardar en Excel
+            st.success(f"Registro de {nombre} guardado.")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -332,6 +283,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
