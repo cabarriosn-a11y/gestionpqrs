@@ -200,64 +200,69 @@ if archivo:
     if "data_ocr" in st.session_state:
         d = st.session_state.data_ocr
         
-        st.markdown("### 📋 Datos Extraídos")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""))
-            doc = st.text_input("Cédula", value=d.get("cedula", ""))
-            fic = st.text_input("Ficha", value=d.get("ficha", ""))
-            
-        with col2:
-            rad = st.text_input("Número de Radicado", value=d.get("radicado", ""))
-            nis = st.text_input("N.I.S", value=d.get("nis", ""))
-            pro = st.text_input("Programa de Formación")
+        # --- 1. ORGANIZACIÓN DE LAS CASILLAS DE ENTRADA (9 CAMPOS + MES) ---
+st.markdown("### 📋 Validación de Datos")
+col1, col2, col3 = st.columns(3)
 
-        if st.button("💾 Guardar Registro"):
-            # Aquí pones tu lógica de guardar en Excel
-            st.success(f"Registro de {nom} guardado.")
-        # ... (aquí terminan tus col1 y col2 de los text_input)
+with col1:
+    nom = st.text_input("Nombres y Apellidos", value=d.get("nombre", ""))
+    doc = st.text_input("Número de Documento", value=d.get("cedula", ""))
+    rad = st.text_input("Número de Radicado", value=d.get("radicado", ""))
 
-        from docxtpl import DocxTemplate
-import io
+with col2:
+    nis = st.text_input("NIS", value=d.get("nis", ""))
+    fic = st.text_input("Ficha", value=d.get("ficha", ""))
+    pro = st.text_input("Programa de Formación", value=d.get("programa", ""))
 
-# 1. Preparamos los datos para la plantilla (deben coincidir con los {{etiquetas}} del Word)
+with col3:
+    correo = st.text_input("Correo Electrónico", value="")
+    tel = st.text_input("Teléfono de Contacto", value="")
+    acta = st.text_input("Número de Acta", value="")
+
+mes = st.selectbox("Mes de Proceso", ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"])
+
+# --- 2. LÓGICA DE GENERACIÓN DEL WORD ---
 contexto = {
     "nombre": nom,
     "cedula": doc,
     "radicado": rad,
     "nis": nis,
     "ficha": fic,
-    "programa": pro
+    "programa": pro,
+    "correo": correo,
+    "telefono": tel,
+    "acta": acta,
+    "mes": mes
 }
 
 try:
-    # 2. Cargamos la plantilla de Word (asegúrate de que el nombre del archivo sea el correcto)
-    doc_tpl = DocxTemplate("plantilla_pqrs.docx") 
+    # Usamos el nombre exacto que me diste
+    doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
     doc_tpl.render(contexto)
 
-    # 3. Guardamos el resultado en memoria para que Streamlit lo pueda descargar
     buffer = io.BytesIO()
     doc_tpl.save(buffer)
     buffer.seek(0)
 
-    # 4. Botones de acción
-    col_btn1, col_btn2 = st.columns(2)
-
-    with col_btn1:
+    st.markdown("---")
+    c1, c2 = st.columns(2)
+    
+    with c1:
         st.download_button(
-            label="📥 Descargar PQRS (Word)",
+            label="📥 Descargar Formato Word",
             data=buffer,
-            file_name=f"PQRS_{doc}.docx",
+            file_name=f"PQRS_{doc}_Acta_{acta}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
-
-    with col_btn2:
-        if st.button("💾 Registrar en Base de Datos"):
-            st.success(f"Registro de {nom} guardado exitosamente.")
+    
+    with c2:
+        if st.button("💾 Finalizar y Guardar"):
+            # Aquí conectaremos la base de datos después
+            st.success(f"¡Datos de {nom} preparados correctamente!")
 
 except Exception as e:
-    st.error(f"Error al cargar la plantilla Word: {e}")
+    st.error(f"⚠️ No se encontró el archivo 'Plantilla.PQRS..docx'. Verifica el nombre en tu carpeta.")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -356,6 +361,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
