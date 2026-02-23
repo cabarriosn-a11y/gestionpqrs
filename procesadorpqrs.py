@@ -261,7 +261,7 @@ try:
             # Aquí conectaremos la base de datos después
             st.success(f"¡Datos de {nom} preparados correctamente!")
 
-   except Exception as e:
+    except Exception as e:
        st.error(f"⚠️ No se encontró el archivo 'Plantilla.PQRS..docx'. Verifica el nombre en tu carpeta.")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
@@ -361,6 +361,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
