@@ -23,7 +23,7 @@ else:
 # Función de IA
 def redactar_con_ia(prompt_usuario):
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash') 
+        model = genai.GenerativeModel('gemini-1.5-flash') 
         contexto = "Redacta una respuesta formal administrativa para el SENA Regional Guajira sobre: "
         response = model.generate_content(contexto + prompt_usuario)
         return response.text
@@ -220,4 +220,5 @@ else:
                 except Exception as e: st.error(f"Error al procesar acta: {e}")
     else:
         st.info("Aún no hay registros en la base de datos local.")
+
 
