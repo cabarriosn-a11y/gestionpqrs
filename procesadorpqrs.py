@@ -16,7 +16,7 @@ ARCHIVO_DATOS = "registro_pqrs.csv"
 
 # Configuración de Gemini
 if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 else:
     st.sidebar.error("❌ Falta GEMINI_API_KEY en Secrets.")
 
@@ -220,6 +220,7 @@ else:
                 except Exception as e: st.error(f"Error al procesar acta: {e}")
     else:
         st.info("Aún no hay registros en la base de datos local.")
+
 
 
 
