@@ -82,7 +82,7 @@ st.markdown("---")
 
 try:
     # Cargamos tu plantilla oficial
-    doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
+    doc_tpl = DocxTemplate("PlantillaPQRS.docx") 
     doc_tpl.render(contexto)
 
     # Creamos el archivo en memoria
@@ -109,7 +109,7 @@ try:
                 st.warning("Por favor, ingrese al menos Nombre y Documento.")
 
 except Exception as e:
-    st.error(f"⚠️ Error: No se pudo encontrar el archivo 'Plantilla.PQRS..docx' en la carpeta.")
+    st.error(f"⚠️ Error: No se pudo encontrar el archivo 'PlantillaPQRS.docx' en la carpeta.")
 
 # --- 4. HISTORIAL (Solo si no es Retiro Voluntario) ---
 # Si tienes la variable 'menu' definida en tu sidebar, úsala aquí:
@@ -267,7 +267,7 @@ if archivo:
 
         try:
             # Usamos el nombre exacto de tu archivo
-            doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
+            doc_tpl = DocxTemplate("PlantillaPQRS.docx") 
             doc_tpl.render(contexto)
 
             buffer = io.BytesIO()
@@ -392,6 +392,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
