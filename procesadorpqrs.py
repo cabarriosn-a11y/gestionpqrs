@@ -1,5 +1,4 @@
 import streamlit as st
-import 
 from PIL import Image
 import re
 from PIL import Image
@@ -344,6 +343,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
