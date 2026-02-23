@@ -204,14 +204,14 @@ if archivo:
         col1, col2 = st.columns(2)
         
         with col1:
-            nombre = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""))
-            cedula = st.text_input("Cédula", value=d.get("cedula", ""))
-            ficha = st.text_input("Ficha", value=d.get("ficha", ""))
+            nom = st.text_input("Nombre Aprendiz", value=d.get("nombre", ""))
+            doc = st.text_input("Cédula", value=d.get("cedula", ""))
+            fic = st.text_input("Ficha", value=d.get("ficha", ""))
             
         with col2:
-            radicado = st.text_input("Número de Radicado", value=d.get("radicado", ""))
+            rad = st.text_input("Número de Radicado", value=d.get("radicado", ""))
             nis = st.text_input("N.I.S", value=d.get("nis", ""))
-            programa = st.text_input("Programa de Formación")
+            pro = st.text_input("Programa de Formación")
 
         if st.button("💾 Guardar Registro"):
             # Aquí pones tu lógica de guardar en Excel
@@ -345,6 +345,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
