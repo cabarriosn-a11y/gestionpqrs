@@ -76,18 +76,7 @@ def redactar_con_ia(prompt_usuario):
     except Exception as e:
         return f"Error con Gemini 2.5: {e}. Intenta usar 'gemini-2.0-flash' si persiste."
 
-# --- ESTA ES LA FUNCIÓN QUE TE DA EL NAMEERROR SI NO ESTÁ AQUÍ ARRIBA ---
-def extraer_datos_multiformato(img):
-    # Forzamos lectura en español para detectar tildes y etiquetas del SENA
-    texto = pytesseract.image_to_string(img, lang='spa')
-    datos = {"nombre": "", "cedula": "", "ficha": "", "radicado": "", "nis": "", "email": ""}
 
-    # 🔍 Búsqueda de Radicado y NIS
-    rad = re.search(r"(?:Radicado|No\.\s*Radicado)\s*\n?([\d-]+)", texto, re.IGNORECASE)
-    if rad: datos["radicado"] = rad.group(1).strip()
-
-    nis = re.search(r"N\.?I\.?S\s*\n?([\d-]+)", texto, re.IGNORECASE)
-    if nis: datos["nis"] = nis.group(1).strip()
 
     # 🔍 Búsqueda de Nombre (Portal PQRS vs Oficina Virtual)
     if "Nombre Persona" in texto:
@@ -188,7 +177,8 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
             with st.spinner("🤖 IA extrayendo datos..."):
                 img = Image.open(archivo)
                 # Llamas a tu función de extracción multiformato
-                st.session_state.data_ocr = extraer_datos_multiformato(img) 
+                # Ahora llamamos a la función de Google
+                st.session_state.data_ocr = extraer_con_document_ai(img_bytes) 
                 st.session_state.archivo_id = archivo.name
                 st.rerun() # Refresca para que los datos caigan en las casillas
 
@@ -343,6 +333,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
