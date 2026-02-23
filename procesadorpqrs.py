@@ -218,35 +218,46 @@ if archivo:
             st.success(f"Registro de {nom} guardado.")
         # ... (aquí terminan tus col1 y col2 de los text_input)
 
-        # 1. Creamos el contenido del archivo que se va a descargar
-        contenido_descarga = f"""REPORTE DE PQRS - SENA
-----------------------
-Nombres y Apellidos: {nom}
-Número de Documento: {doc}
-Número de Radicado: {rad}
-NIS: {nis}
-Ficha: {fic}
-Programa de Formación: {pro}
-----------------------
-Generado automáticamente por Gestión PQRS"""
+        from docxtpl import DocxTemplate
+import io
 
-        # 2. Creamos dos columnas para los botones de acción
-        col_btn1, col_btn2 = st.columns(2)
+# 1. Preparamos los datos para la plantilla (deben coincidir con los {{etiquetas}} del Word)
+contexto = {
+    "nombre": nom,
+    "cedula": doc,
+    "radicado": rad,
+    "nis": nis,
+    "ficha": fic,
+    "programa": pro
+}
 
-        with col_btn1:
-            # Botón para descargar en formato .txt
-            st.download_button(
-                label="📥 Descargar PQRS (TXT)",
-                data=contenido_descarga,
-                file_name=f"PQRS_{doc}.txt",
-                mime="text/plain"
-            )
+try:
+    # 2. Cargamos la plantilla de Word (asegúrate de que el nombre del archivo sea el correcto)
+    doc_tpl = DocxTemplate("plantilla_pqrs.docx") 
+    doc_tpl.render(contexto)
 
-        with col_btn2:
-            # Tu botón actual de Guardar
-            if st.button("💾 Registrar en Base de Datos"):
-                # Aquí va tu lógica de guardado en Excel/CSV
-                st.success(f"¡Datos de {nom} registrados exitosamente!")
+    # 3. Guardamos el resultado en memoria para que Streamlit lo pueda descargar
+    buffer = io.BytesIO()
+    doc_tpl.save(buffer)
+    buffer.seek(0)
+
+    # 4. Botones de acción
+    col_btn1, col_btn2 = st.columns(2)
+
+    with col_btn1:
+        st.download_button(
+            label="📥 Descargar PQRS (Word)",
+            data=buffer,
+            file_name=f"PQRS_{doc}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+    with col_btn2:
+        if st.button("💾 Registrar en Base de Datos"):
+            st.success(f"Registro de {nom} guardado exitosamente.")
+
+except Exception as e:
+    st.error(f"Error al cargar la plantilla Word: {e}")
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
 # ==========================================
@@ -345,6 +356,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
