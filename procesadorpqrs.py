@@ -30,7 +30,7 @@ def extraer_con_document_ai(archivo_bytes):
             st.secrets["gcp_service_account"]
         )
         proyecto_id = st.secrets["gcp_service_account"]["project_id"]
-        procesador_id = "25f15ad9a045fb0b"
+        procesador_id = "ea6078d859fe636"
         name = f"projects/{proyecto_id}/locations/us/processors/{procesador_id}"
 
         raw_document = documentai.RawDocument(content=archivo_bytes, mime_type="image/tiff")
@@ -283,6 +283,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
