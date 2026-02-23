@@ -172,10 +172,10 @@ if menu == "1. Retiros Voluntarios (Base de Datos)":
     archivo = st.file_uploader("Subir Formulario", type=["tif", "png", "jpg"], key=f"u_{v}")
     
     if archivo is not None:
-    # 1. AQUÍ DEFINIMOS img_bytes leyendo el archivo que subió el usuario
-    img_bytes = archivo.read() 
+        # 1. AQUÍ DEFINIMOS img_bytes leyendo el archivo que subió el usuario
+        img_bytes = archivo.read() 
     
-    # 2. Ahora sí podemos llamar a la función sin que de error de nombre
+        # 2. Ahora sí podemos llamar a la función sin que de error de nombre
     if "data_ocr" not in st.session_state:
         with st.spinner("🤖 Analizando con Google Document AI..."):
             st.session_state.data_ocr = extraer_con_document_ai(img_bytes)
@@ -332,6 +332,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
