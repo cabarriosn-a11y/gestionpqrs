@@ -209,33 +209,37 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
 # ==========================================
 # OPCIÓN 1: RETIROS
 # ==========================================
-    # 3. MOSTRAR CASILLAS (Solo si ya tenemos datos en memoria)
-    if "data_ocr" in st.session_state:
-        d = st.session_state.data_ocr
+  # --- 1. CONFIGURACIÓN DE FECHA Y ACTA AUTOMÁTICA ---
+        # (Esto detecta el mes real hoy: febrero = Acta 2)
+        nombres_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
         
-        # --- 1. ORGANIZACIÓN DE LAS CASILLAS DE ENTRADA ---
-        st.markdown("### 📋 Validación de Datos")
+        fecha_actual = datetime.now()
+        mes_actual = nombres_meses[fecha_actual.month - 1]
+        acta_num = fecha_actual.month
+
+        st.markdown(f"### 📋 Generación de Acta: {mes_actual} (No. {acta_num})")
+
+        # --- 2. CASILLAS VACÍAS PARA DIGITAR (9 CAMPOS) ---
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            nom = st.text_input("Nombres y Apellidos", value=d.get("nombre", ""))
-            doc = st.text_input("Número de Documento", value=d.get("cedula", ""))
-            rad = st.text_input("Número de Radicado", value=d.get("radicado", ""))
+            nom = st.text_input("Nombres y Apellidos")
+            doc = st.text_input("Número de Documento")
+            rad = st.text_input("Número de Radicado")
 
         with col2:
-            nis = st.text_input("NIS", value=d.get("nis", ""))
-            fic = st.text_input("Ficha", value=d.get("ficha", ""))
-            pro = st.text_input("Programa de Formación", value=d.get("programa", ""))
+            nis = st.text_input("NIS")
+            fic = st.text_input("Ficha")
+            pro = st.text_input("Programa de Formación")
 
         with col3:
-            correo = st.text_input("Correo Electrónico", value="")
-            tel = st.text_input("Teléfono de Contacto", value="")
-            acta = st.text_input("Número de Acta", value="")
+            correo = st.text_input("Correo Electrónico")
+            tel = st.text_input("Teléfono de Contacto")
+            # El acta se muestra automática y no se deja editar
+            st.text_input("Número de Acta", value=acta_num, disabled=True)
 
-        mes = st.selectbox("Mes de Proceso", ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                                              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"])
-
-        # --- 2. LÓGICA DE GENERACIÓN DEL WORD ---
+        # --- 3. LÓGICA DE GENERACIÓN DEL WORD ---
         contexto = {
             "nombre": nom,
             "cedula": doc,
@@ -245,13 +249,13 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
             "programa": pro,
             "correo": correo,
             "telefono": tel,
-            "acta": acta,
-            "mes": mes
+            "acta": acta_num,
+            "mes": mes_actual
         }
 
         try:
-            # Usamos el nombre exacto de tu archivo
-            doc_tpl = DocxTemplate("Plantilla_PQRS.docx") 
+            # IMPORTANTE: El nombre del archivo debe ser exacto
+            doc_tpl = DocxTemplate("Plantilla.PQRS..docx") 
             doc_tpl.render(contexto)
 
             buffer = io.BytesIO()
@@ -265,18 +269,18 @@ ctx = {"DIA": hoy.day, "MES": ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
                 st.download_button(
                     label="📥 Descargar Formato Word",
                     data=buffer,
-                    file_name=f"PQRS_{doc}_Acta_{acta}.docx",
+                    file_name=f"PQRS_{doc}_Acta_{acta_num}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             
             with c2:
                 if st.button("💾 Finalizar y Guardar"):
-                    # Aquí conectaremos la base de datos después
-                    st.success(f"¡Datos de {nom} preparados correctamente!")
+                    # Aquí es donde se limpia el cache para que la tabla de Google se actualice
+                    st.cache_data.clear() 
+                    st.success(f"✅ ¡Datos de {nom} preparados para el registro!")
 
         except Exception as e:
-            st.error(f"⚠️ Error con el Word: {e}")
-
+            st.error(f"⚠️ No se pudo procesar el Word: {e}")
 # --- FIN DE LA SECCIÓN 1 ---
 # ==========================================
 # OPCIÓN 2: REDACTOR IA (Cualquier tema)
@@ -376,6 +380,7 @@ else:
                     
                 except Exception as e:
                     st.error(f"Error técnico: {e}")
+
 
 
 
