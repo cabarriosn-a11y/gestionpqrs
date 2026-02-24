@@ -55,13 +55,12 @@ acta_num = hoy.month
 with st.sidebar:
     # Cargar y mostrar el logo
     try:
-        imagen_logo = Image.open("logo_sena.png")
+        imagen_logo = Image.open("logo.png")
         st.image(imagen_logo, use_container_width=True)
     except:
-        st.error("No se encontró el archivo logo_sena.png")
+        st.error("No se encontró el archivo logo.png")
     
-    st.title("SENA - Riohacha")
-    # ... resto de tu código del menú
+    
 with st.sidebar:
     st.title("SENA - Centro Industrial y de Energias Alternativas")
     menu = st.radio("MENÚ", ["1. Procesador de PQRS (Retiro Voluntario)", "2. Redactor IA", "3. Acta de Cierre"])
@@ -189,6 +188,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
