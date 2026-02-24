@@ -55,7 +55,7 @@ acta_num = hoy.month
 
 with st.sidebar:
     st.title("SENA - Riohacha")
-    menu = st.radio("MENÚ", ["1. Individual", "2. Redactor IA", "3. Acta de Cierre"])
+    menu = st.radio("MENÚ", ["1. Procesador de PQRS (Individual)", "2. Redactor IA", "3. Acta de Cierre"])
 
 # ==========================================
 # OPCIÓN 1: PROCESADOR INDIVIDUAL
@@ -180,5 +180,6 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
