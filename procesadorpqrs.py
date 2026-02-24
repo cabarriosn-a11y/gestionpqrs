@@ -196,6 +196,11 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+        # Esto te permite bajar el CSV a tu PC para que no se pierda
+if os.path.exists(ARCHIVO_DATOS):
+    with open(ARCHIVO_DATOS, "rb") as f:
+        st.download_button("📥 Descargar Base de Datos (CSV)", f, "respaldo_datos.csv")
+
 
 
 
