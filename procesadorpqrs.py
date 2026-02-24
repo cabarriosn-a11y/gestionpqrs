@@ -13,7 +13,7 @@ from docxtpl import DocxTemplate
 # ⚙️ CONFIGURACIÓN Y RECURSOS
 # ==========================================
 VERSION = "1.5.0"
-ARCHIVO_DATOS = "registro_pqrs.csv"
+ARCHIVO_DATOS = "registro_pqrs_v2.csv"
 
 # Configuración de Motores (Google y Groq)
 if "GEMINI_API_KEY" in st.secrets:
@@ -196,6 +196,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
