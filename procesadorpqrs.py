@@ -77,6 +77,7 @@ if menu == "1. Procesador de PQRS (Retiro Voluntario)":
         nom = st.text_input("Nombres y Apellidos")
         doc = st.text_input("Número de Documento")
         rad = st.text_input("Número de Radicado")
+        direccion = st.text_input("Dirección de Residencia")
     with col2:
         nis = st.text_input("NIS")
         fic = st.text_input("Ficha")
@@ -85,12 +86,15 @@ if menu == "1. Procesador de PQRS (Retiro Voluntario)":
         correo = st.text_input("Correo Electrónico")
         tel = st.text_input("Teléfono")
         st.info(f"Acta: {acta_num} | Mes: {mes_actual}")
+        copia_a = st.text_input("Copiar a:", value="Doralba Cardona") # Valor por defecto
+        anexo = st.text_input("Anexos:", placeholder="Ej: Certificado médico, fotocopia cédula...")
+        proyecta = st.text_imput("Proyecta:",value="Merlis Marbello")
 
     c1, c2 = st.columns(2)
     with c1:
         if st.button("💾 Guardar en Base de Datos"):
             if nom and doc:
-                nuevo = pd.DataFrame([{"nombre": nom.upper(), "cedula": doc, "radicado": rad, "nis": nis, "ficha": fic, "programa": pro.upper(), "correo": correo, "telefono": tel, "acta": acta_num, "mes": mes_actual}])
+                nuevo = pd.DataFrame([{"nombre": nom.upper(), "cedula": doc, "radicado": rad, "nis": nis, "ficha": fic, "programa": pro.upper(),"direccion": direccion, "copia_a":copia_a, "anexo": anexo, "proyecta": proyecta, "correo": correo, "telefono": tel, "acta": acta_num, "mes": mes_actual}])
                 if not os.path.exists(ARCHIVO_DATOS):
                     nuevo.to_csv(ARCHIVO_DATOS, index=False, encoding='utf-8-sig')
                 else:
@@ -101,7 +105,7 @@ if menu == "1. Procesador de PQRS (Retiro Voluntario)":
     with c2:
         try:
             doc_tpl = DocxTemplate("Plantilla_PQRS.docx")
-            doc_tpl.render({"nombre": nom, "cedula": doc, "radicado": rad, "nis": nis, "ficha": fic, "programa": pro, "correo": correo, "telefono": tel, "acta": acta_num, "mes": mes_actual})
+            doc_tpl.render({"nombre": nom, "cedula": doc, "radicado": rad, "nis": nis, "ficha": fic, "programa": pro, "correo": correo, "direccion": direccion, "copia_a": copia_a, "anexo": anexo,"telefono": tel, "acta": acta_num, "mes": mes_actual})
             buf = io.BytesIO(); doc_tpl.save(buf); buf.seek(0)
             st.download_button("📥 Descargar Word Individual", buf, f"PQRS_{doc}.docx")
         except Exception as e: st.error(f"Error plantilla: {e}")
@@ -117,6 +121,7 @@ if menu == "2. Redactor IA":
         nom_ia = st.text_input("Nombre Completo", key="ia_nom")
         doc_ia = st.text_input("Documento", key="ia_doc")
         rad_ia = st.text_input("Radicado No.", key="ia_rad")
+        direccion_ia = st.text_input("Dirección", key="ia_dir") # Nueva
     with col2:
         nis_ia = st.text_input("NIS", key="ia_nis")
         fic_ia = st.text_input("Ficha", key="ia_fic")
@@ -124,6 +129,8 @@ if menu == "2. Redactor IA":
     with col3:
         correo_ia = st.text_input("Correo", key="ia_mail")
         tel_ia = st.text_input("Teléfono", key="ia_tel")
+        copia_a = st.text_input("Copiar a:", value="Doralba Cardona") # Valor por defecto
+        anexo = st.text_input("Anexos:", placeholder="Ej: Certificado médico, fotocopia cédula...")
 
     instruccion = st.text_area("¿Qué debe decir la respuesta?")
 
@@ -143,7 +150,7 @@ if menu == "2. Redactor IA":
                 # Etiquetas en MAYÚSCULAS para la plantilla Genérica
                 ctx_ia = {
                     "NOMBRE": nom_ia.upper(), "CEDULA": doc_ia, "RADICADO": rad_ia,
-                    "NIS": nis_ia, "FICHA": fic_ia, "PROGRAMA": pro_ia.upper(),
+                    "NIS": nis_ia, "FICHA": fic_ia, "PROGRAMA": pro_ia.upper(), "direccion": direccion_ia, "copia_a": copia_a_ia, "anexo": anexo_ia,
                     "CORREO": correo_ia, "TELEFONO": tel_ia, "CUERPO": cuerpo_editado
                 }
                 doc_gen = DocxTemplate("Plantilla_Generica_IA.docx")
@@ -188,6 +195,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
