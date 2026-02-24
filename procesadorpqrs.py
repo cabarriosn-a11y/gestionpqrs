@@ -54,13 +54,13 @@ mes_actual = nombres_meses[hoy.month - 1]
 acta_num = hoy.month
 
 with st.sidebar:
-    st.title("SENA - Riohacha")
-    menu = st.radio("MENÚ", ["1. Procesador de PQRS (Individual)", "2. Redactor IA", "3. Acta de Cierre"])
+    st.title("SENA - Centro Industrial y de Energias Alternativas")
+    menu = st.radio("MENÚ", ["1. Procesador de PQRS (Retiro Voluntario)", "2. Redactor IA", "3. Acta de Cierre"])
 
 # ==========================================
 # OPCIÓN 1: PROCESADOR INDIVIDUAL
 # ==========================================
-if menu == "1. Procesador de PQRS (Individual)":
+if menu == "1. Procesador de PQRS (Retiro Voluntario)":
     st.title("📄 Generador de PQRS Individual")
     
     st.markdown("### ✍️ Datos del Aprendiz")
@@ -180,6 +180,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
