@@ -126,6 +126,7 @@ if menu == "2. Redactor IA":
         nis_ia = st.text_input("NIS", key="ia_nis")
         fic_ia = st.text_input("Ficha", key="ia_fic")
         pro_ia = st.text_input("Programa", key="ia_pro")
+        proyecta = st.text_input("proyecta:", value="Merlys Marbello") #valor por defecto
     with col3:
         correo_ia = st.text_input("Correo", key="ia_mail")
         tel_ia = st.text_input("Teléfono", key="ia_tel")
@@ -150,7 +151,7 @@ if menu == "2. Redactor IA":
                 # Etiquetas en MAYÚSCULAS para la plantilla Genérica
                 ctx_ia = {
                     "NOMBRE": nom_ia.upper(), "CEDULA": doc_ia, "RADICADO": rad_ia,
-                    "NIS": nis_ia, "FICHA": fic_ia, "PROGRAMA": pro_ia.upper(), "direccion": direccion_ia, "copia_a": copia_a_ia, "anexo": anexo_ia,
+                    "NIS": nis_ia, "FICHA": fic_ia, "PROGRAMA": pro_ia.upper(), "direccion": direccion_ia, "copia_a": copia_a_ia, "anexo": anexo_ia, "proyecta": proyecta_ia,
                     "CORREO": correo_ia, "TELEFONO": tel_ia, "CUERPO": cuerpo_editado
                 }
                 doc_gen = DocxTemplate("Plantilla_Generica_IA.docx")
@@ -195,6 +196,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
