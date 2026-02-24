@@ -37,7 +37,7 @@ def redactar_con_ia(prompt_usuario):
                 res = client_groq.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[
-                        {"role": "system", "content": "Eres un asistente administrativo del SENA Regional Guajira."},
+                        {"role": "system", "content": "Eres un EXPERTO administrativo del SENA Regional Guajira. Redacta una respuesta formal y cordial. Caso:"},
                         {"role": "user", "content": prompt_usuario}
                     ],
                 )
@@ -196,6 +196,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
