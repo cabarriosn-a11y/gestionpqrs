@@ -46,26 +46,16 @@ def redactar_con_ia(prompt_usuario):
                 return f"❌ Error en ambos motores: {e_groq}"
         return f"❌ Error de cuota en Google: {e}. (Configura Groq para evitar esto)"
 
-# --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title=f"SENA Guajira v{VERSION}", layout="wide")
-
-# --- LÓGICA DE TIEMPO ---
+# --- INTERFAZ ---
+st.set_page_config(page_title="SENA PQRS Pro", layout="wide")
 hoy = datetime.datetime.now()
-nombres_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+nombres_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 mes_actual = nombres_meses[hoy.month - 1]
 acta_num = hoy.month
 
-# --- SIDEBAR ---
 with st.sidebar:
     st.title("SENA - Riohacha")
-    menu = st.radio("MENÚ PRINCIPAL", [
-        "1. Procesador de PQRS (Individual)", 
-        "2. Redactor Inteligente IA", 
-        "3. Acta de Cierre Mensual (Tabla)"
-    ])
-    st.markdown("---")
-    st.caption(f"v{VERSION} | Regional Guajira")
+    menu = st.radio("MENÚ", ["1. Individual", "2. Redactor IA", "3. Acta de Cierre"])
 
 # ==========================================
 # OPCIÓN 1: PROCESADOR INDIVIDUAL
@@ -190,4 +180,5 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
