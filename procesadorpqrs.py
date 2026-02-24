@@ -105,7 +105,7 @@ if menu == "1. Procesador de PQRS (Retiro Voluntario)":
     with c2:
         try:
             doc_tpl = DocxTemplate("Plantilla_PQRS.docx")
-            doc_tpl.render({"nombre": nom, "cedula": doc, "radicado": rad, "nis": nis, "ficha": fic, "programa": pro, "correo": correo, "direccion": direccion, "copia_a": copia_a, "anexo": anexo,"telefono": tel, "acta": acta_num, "mes": mes_actual})
+            doc_tpl.render({"nombre": nom, "cedula": doc, "radicado": rad, "nis": nis,"proyecta": proyecta, "ficha": fic, "programa": pro, "correo": correo, "direccion": direccion, "copia_a": copia_a, "anexo": anexo,"telefono": tel, "acta": acta_num, "mes": mes_actual})
             buf = io.BytesIO(); doc_tpl.save(buf); buf.seek(0)
             st.download_button("📥 Descargar Word Individual", buf, f"PQRS_{doc}.docx")
         except Exception as e: st.error(f"Error plantilla: {e}")
@@ -196,6 +196,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
