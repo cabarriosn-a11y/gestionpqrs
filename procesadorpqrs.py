@@ -82,13 +82,13 @@ if menu == "1. Procesador de PQRS (Retiro Voluntario)":
         nis = st.text_input("NIS")
         fic = st.text_input("Ficha")
         pro = st.text_input("Programa de Formación")
+        proyecta = st.text_input("Proyecta:", value="Merlis Marbello")  # Valor por defecto
     with col3:
         correo = st.text_input("Correo Electrónico")
         tel = st.text_input("Teléfono")
         st.info(f"Acta: {acta_num} | Mes: {mes_actual}")
         copia_a = st.text_input("Copiar a:", value="Doralba Cardona") # Valor por defecto
         anexo = st.text_input("Anexos:", placeholder="Ej: Certificado médico, fotocopia cédula...")
-        proyecta = st.text_input("Proyecta:", value="Merlis Marbello")  # Valor por defecto
 
     c1, c2 = st.columns(2)
     with c1:
@@ -195,6 +195,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
