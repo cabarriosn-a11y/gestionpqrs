@@ -6,35 +6,45 @@ import datetime
 import pandas as pd
 import os
 import google.generativeai as genai
+from groq import Groq
 from docxtpl import DocxTemplate
 
 # ==========================================
 # ⚙️ CONFIGURACIÓN Y RECURSOS
 # ==========================================
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 ARCHIVO_DATOS = "registro_pqrs.csv"
 
-# Configuración de Gemini - USANDO EL MODELO MÁS RECIENTE
+# Configuración de Motores (Google y Groq)
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-else:
-    st.sidebar.error("❌ Falta GEMINI_API_KEY en Secrets.")
+if "GROQ_API_KEY" not in st.secrets:
+    st.sidebar.warning("⚠️ Falta GROQ_API_KEY en Secrets para respaldo.")
 
 def redactar_con_ia(prompt_usuario):
+    # INTENTO 1: GEMINI 2.0 (El favorito)
     try:
-        # LLAMADA AL ÚLTIMO MODELO GEMINI 2.0 FLASH
-        model = genai.GenerativeModel('gemini-2.0-flash') 
-        contexto = "Eres un experto administrativo del SENA. Redacta una respuesta formal, técnica y cordial. Caso: "
-        response = model.generate_content(contexto + prompt_usuario)
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        ctx = "Eres un experto administrativo del SENA. Redacta una respuesta formal y cordial. Caso: "
+        response = model.generate_content(ctx + prompt_usuario)
         return response.text
     except Exception as e:
-        # Si el modelo 2.0 no está disponible en tu región/cuenta, intenta con 1.5 como respaldo automático
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(prompt_usuario)
-            return response.text
-        except:
-            return f"Error de conexión con la IA: {e}"
+        # INTENTO 2: SI GEMINI FALLA (CUOTA 429), USAR GROQ (LLAMA 3.3)
+        if "429" in str(e) and "GROQ_API_KEY" in st.secrets:
+            try:
+                st.warning("🔄 Gemini saturado. Activando motor de respaldo Groq...")
+                client_groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
+                res = client_groq.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": "Eres un asistente administrativo del SENA Regional Guajira."},
+                        {"role": "user", "content": prompt_usuario}
+                    ],
+                )
+                return res.choices[0].message.content
+            except Exception as e_groq:
+                return f"❌ Error en ambos motores: {e_groq}"
+        return f"❌ Error de cuota en Google: {e}. (Configura Groq para evitar esto)"
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title=f"SENA Guajira v{VERSION}", layout="wide")
@@ -101,10 +111,9 @@ if menu == "1. Procesador de PQRS (Individual)":
 # ==========================================
 # OPCIÓN 2: REDACTOR INTELIGENTE IA (CON TODAS LAS CASILLAS)
 # ==========================================
-elif menu == "2. Redactor Inteligente IA":
-    st.title("🤖 Redactor con Gemini 2.0 Flash")
+if menu == "2. Redactor IA":
+    st.title("🤖 Redactor Inteligente (Doble Motor)")
     
-    st.markdown("### 📋 Datos para la Plantilla")
     col1, col2, col3 = st.columns(3)
     with col1:
         nom_ia = st.text_input("Nombre Completo", key="ia_nom")
@@ -118,31 +127,32 @@ elif menu == "2. Redactor Inteligente IA":
         correo_ia = st.text_input("Correo", key="ia_mail")
         tel_ia = st.text_input("Teléfono", key="ia_tel")
 
-    st.markdown("### 📝 Instrucción para la IA")
-    instruccion = st.text_area("¿Qué debe decir la respuesta?", placeholder="Ej: Negar retiro por falta de documentos...")
+    instruccion = st.text_area("¿Qué debe decir la respuesta?")
 
-    if st.button("✨ Generar con Gemini 2.0"):
+    if st.button("✨ Generar con IA"):
         if instruccion:
-            with st.spinner("IA redactando..."):
-                prompt_final = f"Aprendiz: {nom_ia}. Caso: {instruccion}"
-                st.session_state['texto_ia'] = redactar_con_ia(prompt_final)
+            with st.spinner("Redactando..."):
+                prompt = f"Aprendiz: {nom_ia}. Caso: {instruccion}"
+                st.session_state['texto_ia'] = redactar_con_ia(prompt)
         else: st.warning("Escribe una instrucción.")
 
     if 'texto_ia' in st.session_state:
         st.markdown("---")
-        cuerpo_editado = st.text_area("Revisión del texto:", value=st.session_state['texto_ia'], height=250)
+        cuerpo_editado = st.text_area("Texto final:", value=st.session_state['texto_ia'], height=250)
         
-        try:
-            contexto_ia = {
-                "NOMBRE": nom_ia.upper(), "CEDULA": doc_ia, "RADICADO": rad_ia,
-                "NIS": nis_ia, "FICHA": fic_ia, "PROGRAMA": pro_ia.upper(),
-                "CORREO": correo_ia, "TELEFONO": tel_ia, "CUERPO": cuerpo_editado
-            }
-            doc_gen = DocxTemplate("Plantilla_Generica_IA.docx")
-            doc_gen.render(contexto_ia)
-            buf_ia = io.BytesIO(); doc_gen.save(buf_ia); buf_ia.seek(0)
-            st.download_button("📥 Descargar Respuesta IA", buf_ia, f"Respuesta_{doc_ia}.docx")
-        except Exception as e: st.error(f"Error Word: {e}")
+        if st.button("📥 Descargar Word con IA"):
+            try:
+                # Etiquetas en MAYÚSCULAS para la plantilla Genérica
+                ctx_ia = {
+                    "NOMBRE": nom_ia.upper(), "CEDULA": doc_ia, "RADICADO": rad_ia,
+                    "NIS": nis_ia, "FICHA": fic_ia, "PROGRAMA": pro_ia.upper(),
+                    "CORREO": correo_ia, "TELEFONO": tel_ia, "CUERPO": cuerpo_editado
+                }
+                doc_gen = DocxTemplate("Plantilla_Generica_IA.docx")
+                doc_gen.render(ctx_ia)
+                buf_ia = io.BytesIO(); doc_gen.save(buf_ia); buf_ia.seek(0)
+                st.download_button("Descargar Documento", buf_ia, f"Respuesta_{doc_ia}.docx")
+            except Exception as e: st.error(f"Error: {e}")
 
 # ==========================================
 # OPCIÓN 3: TABLA Y ACTA DE CIERRE
@@ -180,3 +190,4 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
