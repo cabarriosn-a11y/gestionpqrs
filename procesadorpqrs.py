@@ -126,12 +126,12 @@ if menu == "2. Redactor IA":
         nis_ia = st.text_input("NIS", key="ia_nis")
         fic_ia = st.text_input("Ficha", key="ia_fic")
         pro_ia = st.text_input("Programa", key="ia_pro")
-        proyecta = st.text_input("proyecta:", value="Merlys Marbello") #valor por defecto
+        proyecta_ia = st.text_input("proyecta:", value="Merlys Marbello") #valor por defecto
     with col3:
         correo_ia = st.text_input("Correo", key="ia_mail")
         tel_ia = st.text_input("Teléfono", key="ia_tel")
         copia_a_ia = st.text_input("Copiar a:", value="Doralba Cardona") # Valor por defecto
-        anexo = st.text_input("Anexos:", placeholder="Ej: Certificado médico, fotocopia cédula...")
+        anexo_ia = st.text_input("Anexos:", placeholder="Ej: Certificado médico, fotocopia cédula...")
 
     instruccion = st.text_area("¿Qué debe decir la respuesta?")
 
@@ -196,6 +196,7 @@ else:
                     st.download_button("📥 Descargar Acta Cierre", b_m, f"Acta_{mes_actual}.docx")
                 except Exception as e: st.error(f"Error: {e}")
     else: st.info("Sin registros.")
+
 
 
 
